@@ -36,6 +36,14 @@ export function getSetsForExercise(exercise: string) {
   );
 }
 
+export function updateSet(id: number, weight: number, reps: number) {
+  db.runSync('UPDATE strength_sets SET weight = ?, reps = ? WHERE id = ?;', [weight, reps, id]);
+}
+
+export function deleteSet(id: number) {
+  db.runSync('DELETE FROM strength_sets WHERE id = ?;', [id]);
+}
+
 // Garantit que la table existe dès l'import du module, avant même que
 // l'effect d'init du layout racine ne se déclenche (les effects enfants
 // s'exécutent avant ceux du parent, donc un écran peut requêter avant lui).
