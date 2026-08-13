@@ -419,7 +419,7 @@ export default function StrengthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000', paddingTop: 60, paddingHorizontal: 16 },
+  container: { flex: 1, backgroundColor: '#000', paddingTop: 16, paddingHorizontal: 16 },
   headerRow: { marginBottom: 16 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   addSessionButton: { backgroundColor: '#D4AF37', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   dateChipText: { color: '#aaa', fontSize: 13, lineHeight: 18 },
   dateChipTextActive: { color: '#000', fontWeight: 'bold' },
 
-  exerciseList: { flexGrow: 0, height: 48, marginBottom: 8 },
+  exerciseList: { flexGrow: 0, marginBottom: 8 },
   exerciseListContent: { alignItems: 'center' },
   chip: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#444', marginRight: 8 },
   chipActive: { backgroundColor: '#D4AF37', borderColor: '#D4AF37' },
