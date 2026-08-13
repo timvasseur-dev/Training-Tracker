@@ -419,7 +419,7 @@ export default function StrengthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000', paddingTop: 16, paddingHorizontal: 16 },
+  container: { flex: 1, backgroundColor: '#000', paddingTop: 8, paddingHorizontal: 16 },
   headerRow: { marginBottom: 16 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   addSessionButton: { backgroundColor: '#D4AF37', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
@@ -434,8 +434,8 @@ const styles = StyleSheet.create({
   sessionDeleteText: { color: '#c0392b', fontSize: 16 },
   empty: { color: '#666', textAlign: 'center', marginTop: 20 },
 
-  addHeaderRow: { marginBottom: 16 },
-  backText: { color: '#D4AF37', fontSize: 15, marginBottom: 8 },
+  addHeaderRow: { marginBottom: 12 },
+  backText: { color: '#D4AF37', fontSize: 15, marginBottom: 4 },
   addTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
 
   dateRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   exerciseListContent: { alignItems: 'center' },
   chip: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#444', marginRight: 8 },
   chipActive: { backgroundColor: '#D4AF37', borderColor: '#D4AF37' },
-  chipText: { color: '#aaa', lineHeight: 18 },
+  chipText: { color: '#aaa', fontSize: 14, lineHeight: 20 },
   chipTextActive: { color: '#000', fontWeight: 'bold' },
 
   rmCaption: { color: '#888', fontSize: 12, marginBottom: 4 },
