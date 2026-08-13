@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable, TextInput, FlatList } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Pressable, TextInput, FlatList, Dimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { LineChart } from 'react-native-chart-kit';
 import { STRENGTH_EXERCISES } from '../../constants/exercises';
 import { addSet, getAllSets, updateSet, deleteSet, moveSet } from '../../database/db';
+
+const screenWidth = Dimensions.get('window').width;
+
+const chartConfig = {
+  backgroundColor: '#000',
+  backgroundGradientFrom: '#000',
+  backgroundGradientTo: '#000',
+  decimalPlaces: 1,
+  color: (opacity = 1) => `rgba(212, 175, 55, ${opacity})`,
+  labelColor: (opacity = 1) => `rgba(200, 200, 200, ${opacity})`,
+  propsForDots: { r: '4', strokeWidth: '2', stroke: '#D4AF37' },
+};
 
 function calculateE1RM(weight: number, reps: number) {
   return weight * (1 + reps / 30);
@@ -25,6 +38,32 @@ function groupBySession(allSets: any[]) {
       exercises: Array.from(byExercise.entries()).map(([exercise, sets]) => ({ exercise, sets })),
     };
   });
+}
+
+function groupByExercise(setsForDate: any[]) {
+  const map = new Map<string, any[]>();
+  for (const s of setsForDate) {
+    if (!map.has(s.exercise)) map.set(s.exercise, []);
+    map.get(s.exercise)!.push(s);
+  }
+  return Array.from(map.entries()).map(([exercise, sets]) => ({ exercise, sets }));
+}
+
+function getProgressionData(history: any[]) {
+  const byDate = new Map<string, number>();
+  for (const s of history) {
+    const e1rm = calculateE1RM(s.weight, s.reps);
+    const current = byDate.get(s.date) ?? 0;
+    if (e1rm > current) byDate.set(s.date, e1rm);
+  }
+  const sortedDates = Array.from(byDate.keys()).sort().slice(-10);
+  return {
+    labels: sortedDates.map((d) => {
+      const [, month, day] = d.split('-');
+      return `${day}/${month}`;
+    }),
+    values: sortedDates.map((d) => byDate.get(d)!),
+  };
 }
 
 function toISODate(date: Date) {
@@ -59,7 +98,7 @@ export default function StrengthScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
+  const [screen, setScreen] = useState<'list' | 'add' | 'chart'>('list');
 
   function loadAllSets() {
     setAllSets(getAllSets());
@@ -78,7 +117,7 @@ export default function StrengthScreen() {
   function openAdd() {
     setSelectedDate(new Date());
     setSelectedExercise(STRENGTH_EXERCISES[0]);
-    setIsAdding(true);
+    setScreen('add');
     resetForm();
   }
 
@@ -88,13 +127,21 @@ export default function StrengthScreen() {
     if (setsForDate.length > 0) {
       setSelectedExercise(setsForDate[0].exercise);
     }
-    setIsAdding(true);
+    setScreen('add');
     resetForm();
   }
 
   function closeAdd() {
-    setIsAdding(false);
+    setScreen('list');
     resetForm();
+  }
+
+  function openChart() {
+    setScreen('chart');
+  }
+
+  function closeChart() {
+    setScreen('add');
   }
 
   function handleAdd() {
@@ -115,6 +162,7 @@ export default function StrengthScreen() {
     setWeight(item.weight.toString());
     setReps(item.reps.toString());
     setEditingId(item.id);
+    setSelectedExercise(item.exercise);
   }
 
   function handleDelete(id: number) {
@@ -130,11 +178,11 @@ export default function StrengthScreen() {
 
   const sessionGroups = groupBySession(allSets);
   const currentDateISO = toISODate(selectedDate);
-  const currentEntrySets = allSets.filter((s) => s.date === currentDateISO && s.exercise === selectedExercise);
+  const currentSessionByExercise = groupByExercise(allSets.filter((s) => s.date === currentDateISO));
   const exerciseHistory = allSets.filter((s) => s.exercise === selectedExercise);
   const best1RM = exerciseHistory.length > 0 ? Math.max(...exerciseHistory.map((s) => calculateE1RM(s.weight, s.reps))) : null;
 
-  if (!isAdding) {
+  if (screen === 'list') {
     return (
       <View style={styles.container}>
         <View style={styles.headerRow}>
@@ -161,6 +209,40 @@ export default function StrengthScreen() {
             <Text style={styles.empty}>Aucune séance enregistrée. Appuie sur "+ Ajouter une séance" pour commencer.</Text>
           }
         />
+      </View>
+    );
+  }
+
+  if (screen === 'chart') {
+    const progression = getProgressionData(exerciseHistory);
+    return (
+      <View style={styles.container}>
+        <View style={styles.addHeaderRow}>
+          <Pressable onPress={closeChart}>
+            <Text style={styles.backText}>‹ Retour</Text>
+          </Pressable>
+          <Text style={styles.addTitle}>{selectedExercise} — Progression</Text>
+        </View>
+        {progression.values.length < 2 ? (
+          <Text style={styles.empty}>
+            Pas encore assez de séances pour tracer un graphique (ajoute au moins 2 séances avec cet exercice).
+          </Text>
+        ) : (
+          <>
+            <LineChart
+              data={{ labels: progression.labels, datasets: [{ data: progression.values }] }}
+              width={screenWidth - 32}
+              height={240}
+              yAxisSuffix=" kg"
+              chartConfig={chartConfig}
+              bezier
+              style={styles.chart}
+            />
+            <Text style={styles.chartCaption}>
+              1RM estimé par séance ({progression.values.length} dernière{progression.values.length > 1 ? 's' : ''} séances avec {selectedExercise})
+            </Text>
+          </>
+        )}
       </View>
     );
   }
@@ -226,9 +308,14 @@ export default function StrengthScreen() {
       </ScrollView>
 
       {best1RM !== null && (
-        <Text style={styles.rmCaption}>
-          1RM estimé pour {selectedExercise} : {best1RM.toFixed(1)} kg
-        </Text>
+        <>
+          <Text style={styles.rmCaption}>
+            1RM estimé pour {selectedExercise} : {best1RM.toFixed(1)} kg
+          </Text>
+          <Pressable onPress={openChart}>
+            <Text style={styles.chartLink}>Voir la progression →</Text>
+          </Pressable>
+        </>
       )}
 
       <View style={styles.form}>
@@ -267,33 +354,39 @@ export default function StrengthScreen() {
       )}
 
       <FlatList
-        data={currentEntrySets}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => {
-          const isEditing = item.id === editingId;
-          return (
-            <Pressable
-              onPress={() => handleEdit(item)}
-              style={[styles.setRow, isEditing && styles.setRowActive]}>
-              <View>
-                <Text style={styles.setText}>{item.weight} kg × {item.reps}</Text>
-                <Text style={styles.setSubText}>e1RM {calculateE1RM(item.weight, item.reps).toFixed(1)} kg</Text>
-              </View>
-              <View style={styles.rowActions}>
-                <Pressable onPress={() => handleMove(item.id, 'up')} hitSlop={8}>
-                  <Text style={styles.moveText}>▲</Text>
+        data={currentSessionByExercise}
+        keyExtractor={(item) => item.exercise}
+        renderItem={({ item }) => (
+          <View style={styles.previewExercise}>
+            <Text style={styles.previewExerciseName}>{item.exercise}</Text>
+            {item.sets.map((s: any) => {
+              const isEditing = s.id === editingId;
+              return (
+                <Pressable
+                  key={s.id}
+                  onPress={() => handleEdit(s)}
+                  style={[styles.setRow, isEditing && styles.setRowActive]}>
+                  <View>
+                    <Text style={styles.setText}>{s.weight} kg × {s.reps}</Text>
+                    <Text style={styles.setSubText}>e1RM {calculateE1RM(s.weight, s.reps).toFixed(1)} kg</Text>
+                  </View>
+                  <View style={styles.rowActions}>
+                    <Pressable onPress={() => handleMove(s.id, 'up')} hitSlop={8}>
+                      <Text style={styles.moveText}>▲</Text>
+                    </Pressable>
+                    <Pressable onPress={() => handleMove(s.id, 'down')} hitSlop={8}>
+                      <Text style={styles.moveText}>▼</Text>
+                    </Pressable>
+                    <Pressable onPress={() => handleDelete(s.id)} hitSlop={8}>
+                      <Text style={styles.deleteText}>✕</Text>
+                    </Pressable>
+                  </View>
                 </Pressable>
-                <Pressable onPress={() => handleMove(item.id, 'down')} hitSlop={8}>
-                  <Text style={styles.moveText}>▼</Text>
-                </Pressable>
-                <Pressable onPress={() => handleDelete(item.id)} hitSlop={8}>
-                  <Text style={styles.deleteText}>✕</Text>
-                </Pressable>
-              </View>
-            </Pressable>
-          );
-        }}
-        ListEmptyComponent={<Text style={styles.empty}>Aucune série pour {selectedExercise} à cette date</Text>}
+              );
+            })}
+          </View>
+        )}
+        ListEmptyComponent={<Text style={styles.empty}>Aucune série enregistrée pour cette date</Text>}
       />
     </View>
   );
@@ -329,7 +422,10 @@ const styles = StyleSheet.create({
   chipText: { color: '#aaa', lineHeight: 18 },
   chipTextActive: { color: '#000', fontWeight: 'bold' },
 
-  rmCaption: { color: '#888', fontSize: 12, marginBottom: 12 },
+  rmCaption: { color: '#888', fontSize: 12, marginBottom: 4 },
+  chartLink: { color: '#D4AF37', fontSize: 13, marginBottom: 12 },
+  chart: { borderRadius: 12, marginVertical: 12 },
+  chartCaption: { color: '#666', fontSize: 12, textAlign: 'center', marginTop: 4 },
 
   form: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   input: { flex: 1, backgroundColor: '#111', color: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#333' },
@@ -341,6 +437,8 @@ const styles = StyleSheet.create({
   cancelButton: { marginBottom: 16 },
   cancelText: { color: '#888', textAlign: 'center', fontSize: 13 },
 
+  previewExercise: { marginBottom: 16 },
+  previewExerciseName: { color: '#D4AF37', fontWeight: '600', marginBottom: 4 },
   setRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#222' },
   setRowActive: { backgroundColor: '#1a1a1a', borderLeftWidth: 3, borderLeftColor: '#D4AF37', paddingLeft: 8 },
   rowActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
