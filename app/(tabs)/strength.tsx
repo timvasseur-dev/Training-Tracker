@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable, TextInput, FlatList, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Pressable, TextInput, FlatList, Dimensions, Alert } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LineChart } from 'react-native-chart-kit';
 import { STRENGTH_EXERCISES } from '../../constants/exercises';
-import { addSet, getAllSets, updateSet, deleteSet, moveSet } from '../../database/db';
+import { addSet, getAllSets, updateSet, deleteSet, deleteSetsForDate, moveSet } from '../../database/db';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -136,6 +136,26 @@ export default function StrengthScreen() {
     resetForm();
   }
 
+  function handleDeleteSession() {
+    Alert.alert(
+      'Supprimer cette séance ?',
+      `Toutes les séries du ${formatDateLabel(selectedDate)} seront supprimées définitivement.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => {
+            deleteSetsForDate(currentDateISO);
+            resetForm();
+            loadAllSets();
+            setScreen('list');
+          },
+        },
+      ]
+    );
+  }
+
   function openChart() {
     setScreen('chart');
   }
@@ -253,7 +273,14 @@ export default function StrengthScreen() {
         <Pressable onPress={closeAdd}>
           <Text style={styles.backText}>‹ Terminé</Text>
         </Pressable>
-        <Text style={styles.addTitle}>{formatDateLabel(selectedDate)}</Text>
+        <View style={styles.addTitleRow}>
+          <Text style={styles.addTitle}>{formatDateLabel(selectedDate)}</Text>
+          {currentSessionByExercise.length > 0 && (
+            <Pressable onPress={handleDeleteSession}>
+              <Text style={styles.deleteSessionText}>Supprimer la séance</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <View style={styles.dateRow}>
@@ -408,6 +435,8 @@ const styles = StyleSheet.create({
   addHeaderRow: { marginBottom: 16 },
   backText: { color: '#D4AF37', fontSize: 15, marginBottom: 8 },
   addTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  addTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  deleteSessionText: { color: '#c0392b', fontSize: 13 },
 
   dateRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   dateChip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: '#444' },

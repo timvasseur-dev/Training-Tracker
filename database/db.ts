@@ -50,6 +50,10 @@ export function deleteSet(id: number) {
   db.runSync('DELETE FROM strength_sets WHERE id = ?;', [id]);
 }
 
+export function deleteSetsForDate(date: string) {
+  db.runSync('DELETE FROM strength_sets WHERE date = ?;', [date]);
+}
+
 export function moveSet(id: number, direction: 'up' | 'down') {
   const current = db.getFirstSync<StrengthSet>('SELECT * FROM strength_sets WHERE id = ?;', [id]);
   if (!current) return;
