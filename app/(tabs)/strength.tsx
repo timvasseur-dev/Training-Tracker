@@ -27,15 +27,6 @@ function groupBySession(allSets: any[]) {
   });
 }
 
-function groupByExercise(setsForDate: any[]) {
-  const map = new Map<string, any[]>();
-  for (const s of setsForDate) {
-    if (!map.has(s.exercise)) map.set(s.exercise, []);
-    map.get(s.exercise)!.push(s);
-  }
-  return Array.from(map.entries()).map(([exercise, sets]) => ({ exercise, sets }));
-}
-
 function toISODate(date: Date) {
   return date.toISOString().split('T')[0];
 }
@@ -68,7 +59,6 @@ export default function StrengthScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
   function loadAllSets() {
@@ -86,6 +76,18 @@ export default function StrengthScreen() {
   }
 
   function openAdd() {
+    setSelectedDate(new Date());
+    setSelectedExercise(STRENGTH_EXERCISES[0]);
+    setIsAdding(true);
+    resetForm();
+  }
+
+  function openSessionForDate(dateStr: string) {
+    setSelectedDate(new Date(dateStr + 'T00:00:00'));
+    const setsForDate = allSets.filter((s) => s.date === dateStr);
+    if (setsForDate.length > 0) {
+      setSelectedExercise(setsForDate[0].exercise);
+    }
     setIsAdding(true);
     resetForm();
   }
@@ -113,7 +115,6 @@ export default function StrengthScreen() {
     setWeight(item.weight.toString());
     setReps(item.reps.toString());
     setEditingId(item.id);
-    setSelectedExercise(item.exercise);
   }
 
   function handleDelete(id: number) {
@@ -129,7 +130,7 @@ export default function StrengthScreen() {
 
   const sessionGroups = groupBySession(allSets);
   const currentDateISO = toISODate(selectedDate);
-  const currentSessionByExercise = groupByExercise(allSets.filter((s) => s.date === currentDateISO));
+  const currentEntrySets = allSets.filter((s) => s.date === currentDateISO && s.exercise === selectedExercise);
   const exerciseHistory = allSets.filter((s) => s.exercise === selectedExercise);
   const best1RM = exerciseHistory.length > 0 ? Math.max(...exerciseHistory.map((s) => calculateE1RM(s.weight, s.reps))) : null;
 
@@ -145,33 +146,16 @@ export default function StrengthScreen() {
         <FlatList
           data={sessionGroups}
           keyExtractor={(item) => item.date}
-          renderItem={({ item }) => {
-            const isExpanded = item.date === expandedDate;
-            return (
-              <View style={styles.sessionCard}>
-                <Pressable onPress={() => setExpandedDate(isExpanded ? null : item.date)} style={styles.sessionHeader}>
-                  <Text style={styles.sessionDate}>{formatISODateLabel(item.date)}</Text>
-                  <Text style={styles.sessionCount}>
-                    {item.exercises.length} exercice{item.exercises.length > 1 ? 's' : ''}
-                  </Text>
-                </Pressable>
-                {isExpanded && (
-                  <View style={styles.sessionDetail}>
-                    {item.exercises.map((ex: any) => (
-                      <View key={ex.exercise} style={styles.sessionExercise}>
-                        <Text style={styles.sessionExerciseName}>{ex.exercise}</Text>
-                        {ex.sets.map((s: any) => (
-                          <Text key={s.id} style={styles.sessionSetText}>
-                            {s.weight} kg × {s.reps}
-                          </Text>
-                        ))}
-                      </View>
-                    ))}
-                  </View>
-                )}
+          renderItem={({ item }) => (
+            <Pressable onPress={() => openSessionForDate(item.date)} style={styles.sessionCard}>
+              <View style={styles.sessionHeader}>
+                <Text style={styles.sessionDate}>{formatISODateLabel(item.date)}</Text>
+                <Text style={styles.sessionCount}>
+                  {item.exercises.length} exercice{item.exercises.length > 1 ? 's' : ''}
+                </Text>
               </View>
-            );
-          }}
+            </Pressable>
+          )}
           contentContainerStyle={styles.sessionListContent}
           ListEmptyComponent={
             <Text style={styles.empty}>Aucune séance enregistrée. Appuie sur "+ Ajouter une séance" pour commencer.</Text>
@@ -231,7 +215,10 @@ export default function StrengthScreen() {
         {STRENGTH_EXERCISES.map((exercise) => (
           <Pressable
             key={exercise}
-            onPress={() => setSelectedExercise(exercise)}
+            onPress={() => {
+              setSelectedExercise(exercise);
+              resetForm();
+            }}
             style={[styles.chip, selectedExercise === exercise && styles.chipActive]}>
             <Text style={[styles.chipText, selectedExercise === exercise && styles.chipTextActive]}>{exercise}</Text>
           </Pressable>
@@ -280,39 +267,33 @@ export default function StrengthScreen() {
       )}
 
       <FlatList
-        data={currentSessionByExercise}
-        keyExtractor={(item) => item.exercise}
-        renderItem={({ item }) => (
-          <View style={styles.previewExercise}>
-            <Text style={styles.previewExerciseName}>{item.exercise}</Text>
-            {item.sets.map((s: any) => {
-              const isEditing = s.id === editingId;
-              return (
-                <Pressable
-                  key={s.id}
-                  onPress={() => handleEdit(s)}
-                  style={[styles.setRow, isEditing && styles.setRowActive]}>
-                  <View>
-                    <Text style={styles.setText}>{s.weight} kg × {s.reps}</Text>
-                    <Text style={styles.setSubText}>e1RM {calculateE1RM(s.weight, s.reps).toFixed(1)} kg</Text>
-                  </View>
-                  <View style={styles.rowActions}>
-                    <Pressable onPress={() => handleMove(s.id, 'up')} hitSlop={8}>
-                      <Text style={styles.moveText}>▲</Text>
-                    </Pressable>
-                    <Pressable onPress={() => handleMove(s.id, 'down')} hitSlop={8}>
-                      <Text style={styles.moveText}>▼</Text>
-                    </Pressable>
-                    <Pressable onPress={() => handleDelete(s.id)} hitSlop={8}>
-                      <Text style={styles.deleteText}>✕</Text>
-                    </Pressable>
-                  </View>
+        data={currentEntrySets}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => {
+          const isEditing = item.id === editingId;
+          return (
+            <Pressable
+              onPress={() => handleEdit(item)}
+              style={[styles.setRow, isEditing && styles.setRowActive]}>
+              <View>
+                <Text style={styles.setText}>{item.weight} kg × {item.reps}</Text>
+                <Text style={styles.setSubText}>e1RM {calculateE1RM(item.weight, item.reps).toFixed(1)} kg</Text>
+              </View>
+              <View style={styles.rowActions}>
+                <Pressable onPress={() => handleMove(item.id, 'up')} hitSlop={8}>
+                  <Text style={styles.moveText}>▲</Text>
                 </Pressable>
-              );
-            })}
-          </View>
-        )}
-        ListEmptyComponent={<Text style={styles.empty}>Aucune série pour cette date pour l'instant</Text>}
+                <Pressable onPress={() => handleMove(item.id, 'down')} hitSlop={8}>
+                  <Text style={styles.moveText}>▼</Text>
+                </Pressable>
+                <Pressable onPress={() => handleDelete(item.id)} hitSlop={8}>
+                  <Text style={styles.deleteText}>✕</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          );
+        }}
+        ListEmptyComponent={<Text style={styles.empty}>Aucune série pour {selectedExercise} à cette date</Text>}
       />
     </View>
   );
@@ -325,14 +306,10 @@ const styles = StyleSheet.create({
   addSessionButton: { backgroundColor: '#D4AF37', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
   addSessionButtonText: { color: '#000', fontWeight: 'bold', fontSize: 15 },
   sessionListContent: { paddingBottom: 20 },
-  sessionCard: { backgroundColor: '#111', borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#222', overflow: 'hidden' },
-  sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
+  sessionCard: { backgroundColor: '#111', borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#222', padding: 14 },
+  sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sessionDate: { color: '#fff', fontWeight: 'bold' },
   sessionCount: { color: '#888', fontSize: 12 },
-  sessionDetail: { paddingHorizontal: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: '#222' },
-  sessionExercise: { marginTop: 10 },
-  sessionExerciseName: { color: '#D4AF37', fontWeight: '600', marginBottom: 4 },
-  sessionSetText: { color: '#ccc', fontSize: 13, marginBottom: 2 },
   empty: { color: '#666', textAlign: 'center', marginTop: 20 },
 
   addHeaderRow: { marginBottom: 16 },
@@ -364,8 +341,6 @@ const styles = StyleSheet.create({
   cancelButton: { marginBottom: 16 },
   cancelText: { color: '#888', textAlign: 'center', fontSize: 13 },
 
-  previewExercise: { marginBottom: 16 },
-  previewExerciseName: { color: '#D4AF37', fontWeight: '600', marginBottom: 4 },
   setRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#222' },
   setRowActive: { backgroundColor: '#1a1a1a', borderLeftWidth: 3, borderLeftColor: '#D4AF37', paddingLeft: 8 },
   rowActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
