@@ -136,26 +136,6 @@ export default function StrengthScreen() {
     resetForm();
   }
 
-  function handleDeleteSession() {
-    Alert.alert(
-      'Supprimer cette séance ?',
-      `Toutes les séries du ${formatDateLabel(selectedDate)} seront supprimées définitivement.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: () => {
-            deleteSetsForDate(currentDateISO);
-            resetForm();
-            loadAllSets();
-            setScreen('list');
-          },
-        },
-      ]
-    );
-  }
-
   function openChart() {
     setScreen('chart');
   }
@@ -196,6 +176,24 @@ export default function StrengthScreen() {
     loadAllSets();
   }
 
+  function handleDeleteSessionFromList(dateStr: string) {
+    Alert.alert(
+      'Supprimer cette séance ?',
+      `Toutes les séries du ${formatISODateLabel(dateStr)} seront supprimées définitivement.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => {
+            deleteSetsForDate(dateStr);
+            loadAllSets();
+          },
+        },
+      ]
+    );
+  }
+
   const sessionGroups = groupBySession(allSets);
   const currentDateISO = toISODate(selectedDate);
   const currentSessionByExercise = groupByExercise(allSets.filter((s) => s.date === currentDateISO));
@@ -215,14 +213,22 @@ export default function StrengthScreen() {
           data={sessionGroups}
           keyExtractor={(item) => item.date}
           renderItem={({ item }) => (
-            <Pressable onPress={() => openSessionForDate(item.date)} style={styles.sessionCard}>
-              <View style={styles.sessionHeader}>
-                <Text style={styles.sessionDate}>{formatISODateLabel(item.date)}</Text>
-                <Text style={styles.sessionCount}>
-                  {item.exercises.length} exercice{item.exercises.length > 1 ? 's' : ''}
-                </Text>
-              </View>
-            </Pressable>
+            <View style={styles.sessionCard}>
+              <Pressable onPress={() => openSessionForDate(item.date)} style={styles.sessionInfo}>
+                <View style={styles.sessionInfoRow}>
+                  <Text style={styles.sessionDate}>{formatISODateLabel(item.date)}</Text>
+                  <Text style={styles.sessionCount}>
+                    {item.exercises.length} exercice{item.exercises.length > 1 ? 's' : ''}
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable
+                onPress={() => handleDeleteSessionFromList(item.date)}
+                hitSlop={10}
+                style={styles.sessionDeleteButton}>
+                <Text style={styles.sessionDeleteText}>✕</Text>
+              </Pressable>
+            </View>
           )}
           contentContainerStyle={styles.sessionListContent}
           ListEmptyComponent={
@@ -273,14 +279,7 @@ export default function StrengthScreen() {
         <Pressable onPress={closeAdd}>
           <Text style={styles.backText}>‹ Terminé</Text>
         </Pressable>
-        <View style={styles.addTitleRow}>
-          <Text style={styles.addTitle}>{formatDateLabel(selectedDate)}</Text>
-          {currentSessionByExercise.length > 0 && (
-            <Pressable onPress={handleDeleteSession}>
-              <Text style={styles.deleteSessionText}>Supprimer la séance</Text>
-            </Pressable>
-          )}
-        </View>
+        <Text style={styles.addTitle}>{formatDateLabel(selectedDate)}</Text>
       </View>
 
       <View style={styles.dateRow}>
@@ -426,17 +425,18 @@ const styles = StyleSheet.create({
   addSessionButton: { backgroundColor: '#D4AF37', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
   addSessionButtonText: { color: '#000', fontWeight: 'bold', fontSize: 15 },
   sessionListContent: { paddingBottom: 20 },
-  sessionCard: { backgroundColor: '#111', borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#222', padding: 14 },
-  sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sessionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#222' },
+  sessionInfo: { flex: 1, padding: 14 },
+  sessionInfoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sessionDate: { color: '#fff', fontWeight: 'bold' },
   sessionCount: { color: '#888', fontSize: 12 },
+  sessionDeleteButton: { paddingHorizontal: 16, paddingVertical: 14 },
+  sessionDeleteText: { color: '#c0392b', fontSize: 16 },
   empty: { color: '#666', textAlign: 'center', marginTop: 20 },
 
   addHeaderRow: { marginBottom: 16 },
   backText: { color: '#D4AF37', fontSize: 15, marginBottom: 8 },
   addTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  addTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  deleteSessionText: { color: '#c0392b', fontSize: 13 },
 
   dateRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   dateChip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: '#444' },
