@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable, TextInput, FlatList, Dimensions, Alert } from 'react-native';
+import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Dimensions, Alert, Modal } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LineChart } from 'react-native-chart-kit';
 import { STRENGTH_EXERCISES } from '../../constants/exercises';
-import { addSet, getAllSets, updateSet, deleteSet, deleteSetsForDate, moveSet } from '../../database/db';
+import { addSet, getAllSets, updateSet, deleteSet, deleteSetsForDate, moveSet, saveNoteForDate, getAllNotes } from '../../database/db';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -99,13 +99,24 @@ export default function StrengthScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [screen, setScreen] = useState<'list' | 'add' | 'chart'>('list');
+  const [showExercisePicker, setShowExercisePicker] = useState(false);
+  const [notes, setNotes] = useState<Record<string, string>>({});
 
   function loadAllSets() {
     setAllSets(getAllSets());
   }
 
+  function handleNoteChange(text: string) {
+    saveNoteForDate(currentDateISO, text);
+    setNotes((prev) => ({ ...prev, [currentDateISO]: text }));
+  }
+
   useEffect(() => {
     loadAllSets();
+    const rows = getAllNotes();
+    const map: Record<string, string> = {};
+    for (const r of rows) map[r.date] = r.note;
+    setNotes(map);
   }, []);
 
   function resetForm() {
@@ -187,6 +198,12 @@ export default function StrengthScreen() {
           style: 'destructive',
           onPress: () => {
             deleteSetsForDate(dateStr);
+            saveNoteForDate(dateStr, '');
+            setNotes((prev) => {
+              const copy = { ...prev };
+              delete copy[dateStr];
+              return copy;
+            });
             loadAllSets();
           },
         },
@@ -221,6 +238,9 @@ export default function StrengthScreen() {
                     {item.exercises.length} exercice{item.exercises.length > 1 ? 's' : ''}
                   </Text>
                 </View>
+                {notes[item.date] ? (
+                  <Text style={styles.sessionNotePreview} numberOfLines={1}>📝 {notes[item.date]}</Text>
+                ) : null}
               </Pressable>
               <Pressable
                 onPress={() => handleDeleteSessionFromList(item.date)}
@@ -315,23 +335,48 @@ export default function StrengthScreen() {
         />
       )}
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.exerciseList}
-        contentContainerStyle={styles.exerciseListContent}>
-        {STRENGTH_EXERCISES.map((exercise) => (
-          <Pressable
-            key={exercise}
-            onPress={() => {
-              setSelectedExercise(exercise);
-              resetForm();
-            }}
-            style={[styles.chip, selectedExercise === exercise && styles.chipActive]}>
-            <Text style={[styles.chipText, selectedExercise === exercise && styles.chipTextActive]}>{exercise}</Text>
+      <TextInput
+        style={styles.noteInput}
+        placeholder="Note sur la séance (optionnel)"
+        placeholderTextColor="#666"
+        value={notes[currentDateISO] ?? ''}
+        onChangeText={handleNoteChange}
+        multiline
+      />
+
+      <Pressable onPress={() => setShowExercisePicker(true)} style={styles.exercisePickerButton}>
+        <Text style={styles.exercisePickerButtonText}>{selectedExercise}</Text>
+        <Text style={styles.exercisePickerArrow}>▾</Text>
+      </Pressable>
+
+      <Modal
+        visible={showExercisePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowExercisePicker(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowExercisePicker(false)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Choisir un exercice</Text>
+            <FlatList
+              data={STRENGTH_EXERCISES}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => {
+                    setSelectedExercise(item);
+                    resetForm();
+                    setShowExercisePicker(false);
+                  }}
+                  style={[styles.modalItem, item === selectedExercise && styles.modalItemActive]}>
+                  <Text style={[styles.modalItemText, item === selectedExercise && styles.modalItemTextActive]}>
+                    {item}
+                  </Text>
+                </Pressable>
+              )}
+            />
           </Pressable>
-        ))}
-      </ScrollView>
+        </Pressable>
+      </Modal>
 
       {best1RM !== null && (
         <>
@@ -430,6 +475,7 @@ const styles = StyleSheet.create({
   sessionInfoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sessionDate: { color: '#fff', fontWeight: 'bold' },
   sessionCount: { color: '#888', fontSize: 12 },
+  sessionNotePreview: { color: '#888', fontSize: 12, marginTop: 4 },
   sessionDeleteButton: { paddingHorizontal: 16, paddingVertical: 14 },
   sessionDeleteText: { color: '#c0392b', fontSize: 16 },
   empty: { color: '#666', textAlign: 'center', marginTop: 20 },
@@ -443,13 +489,18 @@ const styles = StyleSheet.create({
   dateChipActive: { backgroundColor: '#D4AF37', borderColor: '#D4AF37' },
   dateChipText: { color: '#aaa', fontSize: 13, lineHeight: 18 },
   dateChipTextActive: { color: '#000', fontWeight: 'bold' },
+  noteInput: { backgroundColor: '#111', color: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#333', paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16, minHeight: 44, textAlignVertical: 'top' },
 
-  exerciseList: { flexGrow: 0, marginBottom: 8 },
-  exerciseListContent: { alignItems: 'center' },
-  chip: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#444', marginRight: 8 },
-  chipActive: { backgroundColor: '#D4AF37', borderColor: '#D4AF37' },
-  chipText: { color: '#aaa', fontSize: 14, lineHeight: 20 },
-  chipTextActive: { color: '#000', fontWeight: 'bold' },
+  exercisePickerButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111', borderRadius: 8, borderWidth: 1, borderColor: '#444', paddingVertical: 12, paddingHorizontal: 14, marginBottom: 12 },
+  exercisePickerButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  exercisePickerArrow: { color: '#D4AF37', fontSize: 14 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingTop: 16, paddingBottom: 24, maxHeight: '60%' },
+  modalTitle: { color: '#888', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1, paddingHorizontal: 20, marginBottom: 8 },
+  modalItem: { paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#222' },
+  modalItemActive: { backgroundColor: '#1a1a1a' },
+  modalItemText: { color: '#ccc', fontSize: 16 },
+  modalItemTextActive: { color: '#D4AF37', fontWeight: 'bold' },
 
   rmCaption: { color: '#888', fontSize: 12, marginBottom: 4 },
   chartLink: { color: '#D4AF37', fontSize: 13, marginBottom: 12 },

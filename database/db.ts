@@ -13,6 +13,12 @@ export function initDatabase() {
       sort_order INTEGER
     );
   `);
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS session_notes (
+      date TEXT PRIMARY KEY,
+      note TEXT
+    );
+  `);
   try {
     db.execSync('ALTER TABLE strength_sets ADD COLUMN sort_order INTEGER;');
   } catch (e) {
@@ -79,6 +85,21 @@ export function getAllSets() {
   return db.getAllSync<StrengthSet>(
     'SELECT * FROM strength_sets ORDER BY date DESC, exercise ASC, sort_order ASC;'
   );
+}
+
+export function saveNoteForDate(date: string, note: string) {
+  if (note.trim() === '') {
+    db.runSync('DELETE FROM session_notes WHERE date = ?;', [date]);
+  } else {
+    db.runSync(
+      'INSERT INTO session_notes (date, note) VALUES (?, ?) ON CONFLICT(date) DO UPDATE SET note = excluded.note;',
+      [date, note]
+    );
+  }
+}
+
+export function getAllNotes() {
+  return db.getAllSync<{ date: string; note: string }>('SELECT * FROM session_notes;');
 }
 
 // Garantit que la table existe dès l'import du module, avant même que
