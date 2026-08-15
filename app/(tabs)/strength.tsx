@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Dimensions, Ale
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LineChart } from 'react-native-chart-kit';
 import { STRENGTH_EXERCISES } from '../../constants/exercises';
-import { addSet, getAllSets, updateSet, deleteSet, deleteSetsForDate, moveSet, saveNoteForDate, getAllNotes } from '../../database/db';
+import { addSet, getAllSets, updateSet, deleteSet, deleteSetsForDate, moveSet, saveNoteForDate, getAllNotes, saveSessionLoadForDate } from '../../database/db';
 import { toISODate, isSameDate, getYesterday, formatDateLabel, formatISODateLabel } from '../../utils/dates';
 
 const screenWidth = Dimensions.get('window').width;
@@ -79,6 +79,8 @@ export default function StrengthScreen() {
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [sessionDurations, setSessionDurations] = useState<Record<string, string>>({});
+  const [sessionRpes, setSessionRpes] = useState<Record<string, string>>({});
 
   function loadAllSets() {
     setAllSets(getAllSets());
@@ -89,12 +91,29 @@ export default function StrengthScreen() {
     setNotes((prev) => ({ ...prev, [currentDateISO]: text }));
   }
 
+  function handleSessionMetaChange(durationText: string, rpeText: string) {
+    setSessionDurations((prev) => ({ ...prev, [currentDateISO]: durationText }));
+    setSessionRpes((prev) => ({ ...prev, [currentDateISO]: rpeText }));
+    const durationMin = durationText ? parseFloat(durationText) : null;
+    const rpe = rpeText ? parseFloat(rpeText) : null;
+    const trainingLoad = durationMin && rpe ? durationMin * rpe : null;
+    saveSessionLoadForDate(currentDateISO, durationMin, trainingLoad);
+  }
+
   useEffect(() => {
     loadAllSets();
     const rows = getAllNotes();
-    const map: Record<string, string> = {};
-    for (const r of rows) map[r.date] = r.note;
-    setNotes(map);
+    const noteMap: Record<string, string> = {};
+    const durMap: Record<string, string> = {};
+    const rpeMap: Record<string, string> = {};
+    for (const r of rows) {
+      noteMap[r.date] = r.note ?? '';
+      if (r.duration_min != null) durMap[r.date] = r.duration_min.toString();
+      if (r.duration_min && r.training_load != null) rpeMap[r.date] = (r.training_load / r.duration_min).toString();
+    }
+    setNotes(noteMap);
+    setSessionDurations(durMap);
+    setSessionRpes(rpeMap);
   }, []);
 
   function resetForm() {
@@ -312,6 +331,25 @@ export default function StrengthScreen() {
           }}
         />
       )}
+
+      <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          placeholder="Durée séance (min)"
+          placeholderTextColor="#666"
+          keyboardType="numeric"
+          value={sessionDurations[currentDateISO] ?? ''}
+          onChangeText={(text) => handleSessionMetaChange(text, sessionRpes[currentDateISO] ?? '')}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="RPE (1-10)"
+          placeholderTextColor="#666"
+          keyboardType="numeric"
+          value={sessionRpes[currentDateISO] ?? ''}
+          onChangeText={(text) => handleSessionMetaChange(sessionDurations[currentDateISO] ?? '', text)}
+        />
+      </View>
 
       <Pressable onPress={() => setShowNoteModal(true)} style={styles.noteButton}>
         <Text style={styles.noteButtonText}>

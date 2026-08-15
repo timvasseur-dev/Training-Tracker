@@ -19,6 +19,12 @@ export function initDatabase() {
       note TEXT
     );
   `);
+  try {
+    db.execSync('ALTER TABLE session_notes ADD COLUMN duration_min REAL;');
+  } catch (e) {}
+  try {
+    db.execSync('ALTER TABLE session_notes ADD COLUMN training_load REAL;');
+  } catch (e) {}
   db.execSync(`
     CREATE TABLE IF NOT EXISTS runs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,6 +58,17 @@ export function initDatabase() {
     // la colonne existe déjà, rien à faire
   }
   db.execSync('UPDATE strength_sets SET sort_order = id WHERE sort_order IS NULL;');
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS crossfit_wods (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      name TEXT NOT NULL,
+      duration_min REAL,
+      training_load REAL,
+      note TEXT,
+      sort_order INTEGER
+    );
+  `);
 }
 
 export type StrengthSet = {
@@ -126,7 +143,16 @@ export function saveNoteForDate(date: string, note: string) {
 }
 
 export function getAllNotes() {
-  return db.getAllSync<{ date: string; note: string }>('SELECT * FROM session_notes;');
+  return db.getAllSync<{ date: string; note: string; duration_min: number | null; training_load: number | null }>(
+    'SELECT * FROM session_notes;'
+  );
+}
+
+export function saveSessionLoadForDate(date: string, durationMin: number | null, trainingLoad: number | null) {
+  db.runSync(
+    'INSERT INTO session_notes (date, duration_min, training_load) VALUES (?, ?, ?) ON CONFLICT(date) DO UPDATE SET duration_min = excluded.duration_min, training_load = excluded.training_load;',
+    [date, durationMin, trainingLoad]
+  );
 }
 
 export function addRun(date: string, distanceKm: number, durationMin: number, avgHr: number | null, vo2max: number | null, cadence: number | null, calories: number | null, trainingLoad: number | null, note: string | null) {
@@ -154,6 +180,33 @@ export function deleteRun(id: number) {
 
 export function getAllRuns() {
   return db.getAllSync('SELECT * FROM runs ORDER BY date DESC, sort_order DESC;');
+}
+
+export function addWod(date: string, name: string, durationMin: number | null, trainingLoad: number | null, note: string | null) {
+  const row = db.getFirstSync<{ maxOrder: number | null }>(
+    'SELECT MAX(sort_order) as maxOrder FROM crossfit_wods WHERE date = ?;',
+    [date]
+  );
+  const nextOrder = (row?.maxOrder ?? 0) + 1;
+  db.runSync(
+    'INSERT INTO crossfit_wods (date, name, duration_min, training_load, note, sort_order) VALUES (?, ?, ?, ?, ?, ?);',
+    [date, name, durationMin, trainingLoad, note, nextOrder]
+  );
+}
+
+export function updateWod(id: number, name: string, durationMin: number | null, trainingLoad: number | null, note: string | null) {
+  db.runSync(
+    'UPDATE crossfit_wods SET name = ?, duration_min = ?, training_load = ?, note = ? WHERE id = ?;',
+    [name, durationMin, trainingLoad, note, id]
+  );
+}
+
+export function deleteWod(id: number) {
+  db.runSync('DELETE FROM crossfit_wods WHERE id = ?;', [id]);
+}
+
+export function getAllWods() {
+  return db.getAllSync('SELECT * FROM crossfit_wods ORDER BY date DESC, sort_order DESC;');
 }
 
 // Garantit que la table existe dès l'import du module, avant même que

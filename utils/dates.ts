@@ -24,3 +24,9 @@ export function formatDateLabel(date: Date, prefix = 'Séance') {
 export function formatISODateLabel(dateStr: string, prefix = 'Séance') {
   return formatDateLabel(new Date(dateStr + 'T00:00:00'), prefix);
 }
+
+export function daysAgo(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d;
+}
