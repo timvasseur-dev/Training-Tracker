@@ -67,7 +67,10 @@ function getProgressionData(history: any[]) {
 }
 
 function toISODate(date: Date) {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function isSameDate(a: Date, b: Date) {
@@ -101,6 +104,7 @@ export default function StrengthScreen() {
   const [screen, setScreen] = useState<'list' | 'add' | 'chart'>('list');
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [showNoteModal, setShowNoteModal] = useState(false);
 
   function loadAllSets() {
     setAllSets(getAllSets());
@@ -335,14 +339,35 @@ export default function StrengthScreen() {
         />
       )}
 
-      <TextInput
-        style={styles.noteInput}
-        placeholder="Note sur la séance (optionnel)"
-        placeholderTextColor="#666"
-        value={notes[currentDateISO] ?? ''}
-        onChangeText={handleNoteChange}
-        multiline
-      />
+      <Pressable onPress={() => setShowNoteModal(true)} style={styles.noteButton}>
+        <Text style={styles.noteButtonText}>
+          📝 {notes[currentDateISO] ? 'Modifier la note' : 'Ajouter une note'}
+        </Text>
+      </Pressable>
+
+      <Modal
+        visible={showNoteModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowNoteModal(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowNoteModal(false)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Note de la séance</Text>
+            <TextInput
+              style={styles.noteInput}
+              placeholder="Ex : bonne forme, genou qui tire..."
+              placeholderTextColor="#666"
+              value={notes[currentDateISO] ?? ''}
+              onChangeText={handleNoteChange}
+              multiline
+              autoFocus
+            />
+            <Pressable style={styles.noteValidateButton} onPress={() => setShowNoteModal(false)}>
+              <Text style={styles.noteValidateButtonText}>Valider</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Pressable onPress={() => setShowExercisePicker(true)} style={styles.exercisePickerButton}>
         <Text style={styles.exercisePickerButtonText}>{selectedExercise}</Text>
@@ -464,7 +489,7 @@ export default function StrengthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000', paddingTop: 8, paddingHorizontal: 16 },
+  container: { flex: 1, backgroundColor: '#000', paddingTop: 4, paddingHorizontal: 16 },
   headerRow: { marginBottom: 16 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   addSessionButton: { backgroundColor: '#D4AF37', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
@@ -480,16 +505,20 @@ const styles = StyleSheet.create({
   sessionDeleteText: { color: '#c0392b', fontSize: 16 },
   empty: { color: '#666', textAlign: 'center', marginTop: 20 },
 
-  addHeaderRow: { marginBottom: 12 },
-  backText: { color: '#D4AF37', fontSize: 15, marginBottom: 4 },
+  addHeaderRow: { marginBottom: 8 },
+  backText: { color: '#D4AF37', fontSize: 15, marginBottom: 2 },
   addTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
 
-  dateRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  dateRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   dateChip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: '#444' },
   dateChipActive: { backgroundColor: '#D4AF37', borderColor: '#D4AF37' },
   dateChipText: { color: '#aaa', fontSize: 13, lineHeight: 18 },
   dateChipTextActive: { color: '#000', fontWeight: 'bold' },
-  noteInput: { backgroundColor: '#111', color: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#333', paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16, minHeight: 44, textAlignVertical: 'top' },
+  noteButton: { marginBottom: 12 },
+  noteButtonText: { color: '#D4AF37', fontSize: 13 },
+  noteInput: { backgroundColor: '#000', color: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#333', paddingHorizontal: 12, paddingVertical: 10, marginHorizontal: 20, marginBottom: 16, minHeight: 80, textAlignVertical: 'top' },
+  noteValidateButton: { backgroundColor: '#D4AF37', borderRadius: 8, marginHorizontal: 20, paddingVertical: 12, alignItems: 'center' },
+  noteValidateButtonText: { color: '#000', fontWeight: 'bold' },
 
   exercisePickerButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111', borderRadius: 8, borderWidth: 1, borderColor: '#444', paddingVertical: 12, paddingHorizontal: 14, marginBottom: 12 },
   exercisePickerButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
