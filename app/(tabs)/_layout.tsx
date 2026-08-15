@@ -23,6 +23,10 @@ export default function TabLayout() {
         name="crossfit"
         options={{ title: 'Crossfit WOD', tabBarIcon: ({ color, size }) => <Ionicons name="flame-outline" size={size} color={color} /> }}
       />
+      <Tabs.Screen
+        name="calendar"
+        options={{ title: 'Calendrier', tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} /> }}
+      />
     </Tabs>
   );
 }
