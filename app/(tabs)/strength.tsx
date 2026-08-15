@@ -4,6 +4,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { LineChart } from 'react-native-chart-kit';
 import { STRENGTH_EXERCISES } from '../../constants/exercises';
 import { addSet, getAllSets, updateSet, deleteSet, deleteSetsForDate, moveSet, saveNoteForDate, getAllNotes } from '../../database/db';
+import { toISODate, isSameDate, getYesterday, formatDateLabel, formatISODateLabel } from '../../utils/dates';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -64,33 +65,6 @@ function getProgressionData(history: any[]) {
     }),
     values: sortedDates.map((d) => byDate.get(d)!),
   };
-}
-
-function toISODate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function isSameDate(a: Date, b: Date) {
-  return toISODate(a) === toISODate(b);
-}
-
-function getYesterday() {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d;
-}
-
-function formatDateLabel(date: Date) {
-  if (isSameDate(date, new Date())) return "Séance d'aujourd'hui";
-  if (isSameDate(date, getYesterday())) return "Séance d'hier";
-  return `Séance du ${date.toLocaleDateString('fr-FR')}`;
-}
-
-function formatISODateLabel(dateStr: string) {
-  return formatDateLabel(new Date(dateStr + 'T00:00:00'));
 }
 
 export default function StrengthScreen() {

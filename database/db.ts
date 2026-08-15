@@ -19,6 +19,33 @@ export function initDatabase() {
       note TEXT
     );
   `);
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      distance_km REAL NOT NULL,
+      duration_min REAL NOT NULL,
+      avg_hr INTEGER,
+      vo2max REAL,
+      cadence INTEGER,
+      calories INTEGER,
+      training_load REAL,
+      note TEXT,
+      sort_order INTEGER
+    );
+  `);
+  try {
+    db.execSync('ALTER TABLE runs ADD COLUMN cadence INTEGER;');
+  } catch (e) {}
+  try {
+    db.execSync('ALTER TABLE runs ADD COLUMN calories INTEGER;');
+  } catch (e) {}
+  try {
+    db.execSync('ALTER TABLE runs ADD COLUMN training_load REAL;');
+  } catch (e) {}
+  try {
+    db.execSync('ALTER TABLE runs ADD COLUMN note TEXT;');
+  } catch (e) {}
   try {
     db.execSync('ALTER TABLE strength_sets ADD COLUMN sort_order INTEGER;');
   } catch (e) {
@@ -100,6 +127,33 @@ export function saveNoteForDate(date: string, note: string) {
 
 export function getAllNotes() {
   return db.getAllSync<{ date: string; note: string }>('SELECT * FROM session_notes;');
+}
+
+export function addRun(date: string, distanceKm: number, durationMin: number, avgHr: number | null, vo2max: number | null, cadence: number | null, calories: number | null, trainingLoad: number | null, note: string | null) {
+  const row = db.getFirstSync<{ maxOrder: number | null }>(
+    'SELECT MAX(sort_order) as maxOrder FROM runs WHERE date = ?;',
+    [date]
+  );
+  const nextOrder = (row?.maxOrder ?? 0) + 1;
+  db.runSync(
+    'INSERT INTO runs (date, distance_km, duration_min, avg_hr, vo2max, cadence, calories, training_load, note, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
+    [date, distanceKm, durationMin, avgHr, vo2max, cadence, calories, trainingLoad, note, nextOrder]
+  );
+}
+
+export function updateRun(id: number, distanceKm: number, durationMin: number, avgHr: number | null, vo2max: number | null, cadence: number | null, calories: number | null, trainingLoad: number | null, note: string | null) {
+  db.runSync(
+    'UPDATE runs SET distance_km = ?, duration_min = ?, avg_hr = ?, vo2max = ?, cadence = ?, calories = ?, training_load = ?, note = ? WHERE id = ?;',
+    [distanceKm, durationMin, avgHr, vo2max, cadence, calories, trainingLoad, note, id]
+  );
+}
+
+export function deleteRun(id: number) {
+  db.runSync('DELETE FROM runs WHERE id = ?;', [id]);
+}
+
+export function getAllRuns() {
+  return db.getAllSync('SELECT * FROM runs ORDER BY date DESC, sort_order DESC;');
 }
 
 // Garantit que la table existe dès l'import du module, avant même que
