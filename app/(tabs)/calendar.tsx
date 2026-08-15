@@ -8,12 +8,6 @@ const STRENGTH_COLOR = '#D4AF37';
 const RUNNING_COLOR = '#5DADE2';
 const CROSSFIT_COLOR = '#E67E22';
 
-function formatMonthLabel(monthPrefix: string) {
-  const [year, month] = monthPrefix.split('-').map(Number);
-  const date = new Date(year, month - 1, 1);
-  return date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-}
-
 export default function CalendarScreen() {
   const [allSets, setAllSets] = useState<any[]>([]);
   const [allRuns, setAllRuns] = useState<any[]>([]);
@@ -84,24 +78,21 @@ export default function CalendarScreen() {
       <Text style={styles.title}>Calendrier</Text>
 
       <View style={styles.statsCard}>
-        <Text style={styles.statsTitle}>{formatMonthLabel(visibleMonth)}</Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statBlock}>
-            <Text style={styles.statValue}>{strengthSessionsCount}</Text>
-            <Text style={styles.statLabel}>séances renfo</Text>
-          </View>
-          <View style={styles.statBlock}>
-            <Text style={styles.statValue}>{(totalVolume / 1000).toFixed(1)}t</Text>
-            <Text style={styles.statLabel}>volume soulevé</Text>
-          </View>
-          <View style={styles.statBlock}>
-            <Text style={styles.statValue}>{totalDistance.toFixed(1)}</Text>
-            <Text style={styles.statLabel}>km courus</Text>
-          </View>
-          <View style={styles.statBlock}>
-            <Text style={styles.statValue}>{monthWods.length}</Text>
-            <Text style={styles.statLabel}>WODs</Text>
-          </View>
+        <View style={styles.statBlock}>
+          <Text style={styles.statValue}>{strengthSessionsCount}</Text>
+          <Text style={styles.statLabel}>renfo</Text>
+        </View>
+        <View style={styles.statBlock}>
+          <Text style={styles.statValue}>{(totalVolume / 1000).toFixed(1)}t</Text>
+          <Text style={styles.statLabel}>volume</Text>
+        </View>
+        <View style={styles.statBlock}>
+          <Text style={styles.statValue}>{totalDistance.toFixed(1)}</Text>
+          <Text style={styles.statLabel}>km</Text>
+        </View>
+        <View style={styles.statBlock}>
+          <Text style={styles.statValue}>{monthWods.length}</Text>
+          <Text style={styles.statLabel}>WODs</Text>
         </View>
       </View>
 
@@ -164,12 +155,10 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000', paddingTop: 4, paddingHorizontal: 16 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
-  statsCard: { backgroundColor: '#111', borderRadius: 8, borderWidth: 1, borderColor: '#222', padding: 14, marginBottom: 12 },
-  statsTitle: { color: '#D4AF37', fontSize: 13, textTransform: 'capitalize', marginBottom: 10, fontWeight: '600' },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  statBlock: { minWidth: '40%' },
-  statValue: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  statLabel: { color: '#888', fontSize: 12 },
+  statsCard: { flexDirection: 'row', backgroundColor: '#111', borderRadius: 8, borderWidth: 1, borderColor: '#222', paddingVertical: 8, paddingHorizontal: 10, marginBottom: 8 },
+  statBlock: { flex: 1, alignItems: 'center' },
+  statValue: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  statLabel: { color: '#888', fontSize: 9 },
   calendar: { borderRadius: 8, marginBottom: 12 },
   legendRow: { flexDirection: 'row', gap: 16, marginBottom: 16, justifyContent: 'center' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },

@@ -75,7 +75,7 @@ export default function StrengthScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [screen, setScreen] = useState<'list' | 'add' | 'chart'>('list');
+  const [screen, setScreen] = useState<'list' | 'view' | 'add' | 'chart'>('list');
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -135,7 +135,7 @@ export default function StrengthScreen() {
     if (setsForDate.length > 0) {
       setSelectedExercise(setsForDate[0].exercise);
     }
-    setScreen('add');
+    setScreen('view');
     resetForm();
   }
 
@@ -256,6 +256,43 @@ export default function StrengthScreen() {
     );
   }
 
+  if (screen === 'view') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.addHeaderRow}>
+          <Pressable onPress={closeAdd}>
+            <Text style={styles.backText}>‹ Terminé</Text>
+          </Pressable>
+          <View style={styles.addTitleRow}>
+            <Text style={styles.addTitle}>{formatDateLabel(selectedDate)}</Text>
+            <Pressable onPress={() => setScreen('add')}>
+              <Text style={styles.editLinkText}>Modifier</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {notes[currentDateISO] ? <Text style={styles.viewNote}>📝 {notes[currentDateISO]}</Text> : null}
+
+        <FlatList
+          data={currentSessionByExercise}
+          keyExtractor={(item) => item.exercise}
+          renderItem={({ item }) => (
+            <View style={styles.previewExercise}>
+              <Text style={styles.previewExerciseName}>{item.exercise}</Text>
+              {item.sets.map((s: any) => (
+                <View key={s.id} style={styles.setRow}>
+                  <Text style={styles.setText}>{s.weight} kg × {s.reps}</Text>
+                  <Text style={styles.setSubText}>e1RM {calculateE1RM(s.weight, s.reps).toFixed(1)} kg</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          ListEmptyComponent={<Text style={styles.empty}>Aucune série enregistrée pour cette date</Text>}
+        />
+      </View>
+    );
+  }
+
   if (screen === 'chart') {
     const progression = getProgressionData(exerciseHistory);
     return (
@@ -332,19 +369,19 @@ export default function StrengthScreen() {
         />
       )}
 
-      <View style={styles.form}>
+      <View style={styles.metaForm}>
         <TextInput
-          style={styles.input}
+          style={styles.metaInput}
           placeholder="Durée séance (min)"
-          placeholderTextColor="#666"
+          placeholderTextColor="#555"
           keyboardType="numeric"
           value={sessionDurations[currentDateISO] ?? ''}
           onChangeText={(text) => handleSessionMetaChange(text, sessionRpes[currentDateISO] ?? '')}
         />
         <TextInput
-          style={styles.input}
+          style={styles.metaInput}
           placeholder="RPE (1-10)"
-          placeholderTextColor="#666"
+          placeholderTextColor="#555"
           keyboardType="numeric"
           value={sessionRpes[currentDateISO] ?? ''}
           onChangeText={(text) => handleSessionMetaChange(sessionDurations[currentDateISO] ?? '', text)}
@@ -519,7 +556,10 @@ const styles = StyleSheet.create({
 
   addHeaderRow: { marginBottom: 8 },
   backText: { color: '#D4AF37', fontSize: 15, marginBottom: 2 },
+  addTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   addTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  editLinkText: { color: '#D4AF37', fontSize: 14, fontWeight: '600' },
+  viewNote: { color: '#aaa', fontSize: 13, fontStyle: 'italic', marginBottom: 12 },
 
   dateRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   dateChip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: '#444' },
@@ -532,9 +572,9 @@ const styles = StyleSheet.create({
   noteValidateButton: { backgroundColor: '#D4AF37', borderRadius: 8, marginHorizontal: 20, paddingVertical: 12, alignItems: 'center' },
   noteValidateButtonText: { color: '#000', fontWeight: 'bold' },
 
-  exercisePickerButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111', borderRadius: 8, borderWidth: 1, borderColor: '#444', paddingVertical: 12, paddingHorizontal: 14, marginBottom: 12 },
-  exercisePickerButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  exercisePickerArrow: { color: '#D4AF37', fontSize: 14 },
+  exercisePickerButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0a0a0a', borderRadius: 6, borderWidth: 1, borderColor: '#333', paddingVertical: 8, paddingHorizontal: 12, marginBottom: 10 },
+  exercisePickerButtonText: { color: '#ccc', fontSize: 14, fontWeight: '500' },
+  exercisePickerArrow: { color: '#D4AF37', fontSize: 12 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingTop: 16, paddingBottom: 24, maxHeight: '60%' },
   modalTitle: { color: '#888', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1, paddingHorizontal: 20, marginBottom: 8 },
@@ -550,6 +590,8 @@ const styles = StyleSheet.create({
 
   form: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   input: { flex: 1, backgroundColor: '#111', color: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#333' },
+  metaForm: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  metaInput: { flex: 1, backgroundColor: '#0a0a0a', color: '#999', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#222', fontSize: 13 },
   actionsRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   addButton: { flex: 1, backgroundColor: '#D4AF37', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
   addButtonText: { color: '#000', fontWeight: 'bold' },
