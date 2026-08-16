@@ -3,8 +3,9 @@ import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Alert, Dimensio
 import { router } from 'expo-router';
 import { LineChart } from 'react-native-chart-kit';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { getProfile, saveProfile, addWeightEntry, getWeightLog, deleteWeightEntry } from '../database/db';
+import { getProfile, saveProfile, addWeightEntry, getWeightLog, deleteWeightEntry, getAllSets } from '../database/db';
 import { toISODate, formatISODateLabel } from '../utils/dates';
+import { BARBELL_EXERCISES } from '../constants/exercises';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -72,6 +73,20 @@ export default function ProfileScreen() {
 
   const latestWeight = weightLog.length > 0 ? weightLog[weightLog.length - 1].weight_kg : null;
   const chartData = weightLog.slice(-12);
+
+  function calculateE1RM(weight: number, reps: number) {
+    return weight * (1 + reps / 30);
+  }
+
+  const allSets = getAllSets() as any[];
+  const strengthRatios = latestWeight
+    ? BARBELL_EXERCISES.map((exercise) => {
+        const setsForEx = allSets.filter((s) => s.exercise === exercise);
+        if (setsForEx.length === 0) return null;
+        const best1RM = Math.max(...setsForEx.map((s) => calculateE1RM(s.weight, s.reps)));
+        return { exercise, ratio: best1RM / latestWeight, e1rm: best1RM };
+      }).filter((r): r is { exercise: string; ratio: number; e1rm: number } => r !== null)
+    : [];
 
   return (
     <View style={styles.container}>
@@ -175,6 +190,19 @@ export default function ProfileScreen() {
                 style={styles.chart}
               />
             )}
+
+            {strengthRatios.length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>Ratios de force (× poids de corps)</Text>
+                {strengthRatios.map((r) => (
+                  <View key={r.exercise} style={styles.ratioRow}>
+                    <Text style={styles.ratioExercise}>{r.exercise}</Text>
+                    <Text style={styles.ratioValue}>{r.ratio.toFixed(2)}×</Text>
+                  </View>
+                ))}
+                <Text style={styles.ratioCaption}>Basé sur ton 1RM estimé et ta dernière pesée ({latestWeight} kg)</Text>
+              </>
+            )}
           </View>
         }
         renderItem={({ item }) => (
@@ -219,4 +247,8 @@ const styles = StyleSheet.create({
   weightValue: { color: '#D4AF37', fontWeight: '600', marginRight: 16 },
   deleteText: { color: '#666', fontSize: 16 },
   empty: { color: '#666', textAlign: 'center', marginTop: 20 },
+  ratioRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#222' },
+  ratioExercise: { color: '#ccc', fontSize: 14 },
+  ratioValue: { color: '#D4AF37', fontSize: 16, fontWeight: 'bold' },
+  ratioCaption: { color: '#666', fontSize: 11, marginTop: 8, fontStyle: 'italic' },
 });

@@ -10,3 +10,13 @@ export const STRENGTH_EXERCISES = [
   'Clean',
   'Snatch',
 ];
+
+export const BARBELL_EXERCISES = [
+  'Deadlift',
+  'Bench barbell',
+  'Back squat',
+  'Front squat',
+  'Shoulder press',
+  'Clean',
+  'Snatch',
+];
