@@ -53,6 +53,9 @@ export function initDatabase() {
     db.execSync('ALTER TABLE runs ADD COLUMN note TEXT;');
   } catch (e) {}
   try {
+    db.execSync('ALTER TABLE runs ADD COLUMN health_connect_id TEXT;');
+  } catch (e) {}
+  try {
     db.execSync('ALTER TABLE strength_sets ADD COLUMN sort_order INTEGER;');
   } catch (e) {
     // la colonne existe déjà, rien à faire
@@ -207,6 +210,23 @@ export function deleteWod(id: number) {
 
 export function getAllWods() {
   return db.getAllSync('SELECT * FROM crossfit_wods ORDER BY date DESC, sort_order DESC;');
+}
+
+export function runExistsByHealthConnectId(hcId: string) {
+  const row = db.getFirstSync('SELECT id FROM runs WHERE health_connect_id = ?;', [hcId]);
+  return row != null;
+}
+
+export function addRunFromHealthConnect(date: string, distanceKm: number, durationMin: number, avgHr: number | null, calories: number | null, hcId: string) {
+  const row = db.getFirstSync<{ maxOrder: number | null }>(
+    'SELECT MAX(sort_order) as maxOrder FROM runs WHERE date = ?;',
+    [date]
+  );
+  const nextOrder = (row?.maxOrder ?? 0) + 1;
+  db.runSync(
+    'INSERT INTO runs (date, distance_km, duration_min, avg_hr, calories, health_connect_id, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?);',
+    [date, distanceKm, durationMin, avgHr, calories, hcId, nextOrder]
+  );
 }
 
 // Garantit que la table existe dès l'import du module, avant même que

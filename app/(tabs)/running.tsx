@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Alert, Modal } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { addRun, getAllRuns, updateRun, deleteRun } from '../../database/db';
+import { addRun, getAllRuns, updateRun, deleteRun, runExistsByHealthConnectId, addRunFromHealthConnect } from '../../database/db';
 import { toISODate, isSameDate, getYesterday, formatDateLabel, formatISODateLabel } from '../../utils/dates';
+import { initHealthConnect, requestRunningPermissions, readRunningSessions } from '../../utils/healthConnect';
 
 function computeSpeed(distanceKm: number, durationMin: number) {
   if (durationMin <= 0) return 0;
@@ -98,6 +99,39 @@ export default function RunningScreen() {
     setScreen('list');
   }
 
+  async function handleImportFromZepp() {
+    try {
+      const ok = await initHealthConnect();
+      if (!ok) {
+        Alert.alert('Health Connect', "Health Connect n'est pas disponible sur cet appareil.");
+        return;
+      }
+      await requestRunningPermissions();
+      const sessions = await readRunningSessions(30);
+      let imported = 0;
+      let skipped = 0;
+      for (const s of sessions) {
+        if (runExistsByHealthConnectId(s.healthConnectId)) {
+          skipped++;
+          continue;
+        }
+        addRunFromHealthConnect(
+          toISODate(s.date),
+          s.distanceKm,
+          s.durationMin,
+          s.avgHr,
+          s.calories,
+          s.healthConnectId
+        );
+        imported++;
+      }
+      loadRuns();
+      Alert.alert('Import Zepp', `${imported} course(s) importée(s), ${skipped} déjà présente(s).`);
+    } catch (e: any) {
+      Alert.alert('Erreur', e?.message ?? "Échec de l'import Health Connect");
+    }
+  }
+
   function handleDelete(id: number) {
     Alert.alert('Supprimer cette course ?', 'Cette action est définitive.', [
       { text: 'Annuler', style: 'cancel' },
@@ -121,6 +155,9 @@ export default function RunningScreen() {
           <Text style={styles.title}>Courses</Text>
           <Pressable style={styles.addButton} onPress={openAdd}>
             <Text style={styles.addButtonText}>+ Ajouter une course</Text>
+          </Pressable>
+          <Pressable onPress={handleImportFromZepp} style={{ marginTop: 10, alignItems: 'center' }}>
+            <Text style={{ color: '#5DADE2', fontSize: 13 }}>🔗 Importer depuis Zepp</Text>
           </Pressable>
         </View>
         <FlatList

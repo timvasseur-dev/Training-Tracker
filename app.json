@@ -20,7 +20,13 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.timotheevasseurdev.trainingtracker"
+      "package": "com.timotheevasseurdev.trainingtracker",
+      "permissions": [
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+        "android.permission.health.READ_HEART_RATE"
+      ]
     },
     "web": {
       "output": "static",
@@ -42,7 +48,9 @@
       ],
       "expo-sqlite",
       "@react-native-community/datetimepicker",
-      "react-native-health-connect",
+      [
+        "react-native-health-connect"
+      ],
       [
         "expo-build-properties",
         {

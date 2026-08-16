@@ -4,6 +4,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { addWod, getAllWods, updateWod, deleteWod, getAllRuns, getAllSets, getAllNotes } from '../../database/db';
 import { toISODate, isSameDate, getYesterday, formatDateLabel, formatISODateLabel, daysAgo } from '../../utils/dates';
 
+type RecoveryLevel = 'unknown' | 'high' | 'low' | 'normal';
+
 function computeRecoveryStatus(runs: any[], wods: any[], strengthSessions: any[]) {
   const today = toISODate(new Date());
   const start7 = toISODate(daysAgo(6));
@@ -24,7 +26,7 @@ function computeRecoveryStatus(runs: any[], wods: any[], strengthSessions: any[]
 
   if (baselineWeeklyAvg === 0) {
     return {
-      level: 'unknown',
+      level: 'unknown' as RecoveryLevel,
       message: "Pas encore assez d'historique pour comparer ta charge — reviens dans quelques semaines.",
     };
   }
@@ -33,18 +35,18 @@ function computeRecoveryStatus(runs: any[], wods: any[], strengthSessions: any[]
 
   if (ratio > 1.3) {
     return {
-      level: 'high',
+      level: 'high' as RecoveryLevel,
       message: `Charge élevée cette semaine (${last7Load.toFixed(0)} vs ${baselineWeeklyAvg.toFixed(0)} habituellement) — envisage de lever le pied ou d'y aller doucement.`,
     };
   }
   if (ratio < 0.7) {
     return {
-      level: 'low',
+      level: 'low' as RecoveryLevel,
       message: `Charge légère cette semaine (${last7Load.toFixed(0)} vs ${baselineWeeklyAvg.toFixed(0)} habituellement) — bon moment pour un WOD.`,
     };
   }
   return {
-    level: 'normal',
+    level: 'normal' as RecoveryLevel,
     message: `Charge dans ta moyenne habituelle (${last7Load.toFixed(0)} vs ${baselineWeeklyAvg.toFixed(0)}) — feu vert pour un WOD.`,
   };
 }
@@ -60,7 +62,7 @@ export default function CrossfitScreen() {
   const [rpe, setRpe] = useState('');
   const [note, setNote] = useState('');
   const [showNoteModal, setShowNoteModal] = useState(false);
-  const [recoveryStatus, setRecoveryStatus] = useState<{ level: string; message: string } | null>(null);
+  const [recoveryStatus, setRecoveryStatus] = useState<{ level: RecoveryLevel; message: string } | null>(null);
   const [strengthCount7d, setStrengthCount7d] = useState(0);
 
   function loadWods() {
@@ -152,7 +154,7 @@ export default function CrossfitScreen() {
         <View style={styles.headerRow}>
           <Text style={styles.title}>Crossfit WOD</Text>
           {recoveryStatus && (
-            <View style={[styles.recoveryCard, styles[`recovery_${recoveryStatus.level}` as keyof typeof styles]]}>
+            <View style={[styles.recoveryCard, styles[`recovery_${recoveryStatus.level}` as `recovery_${RecoveryLevel}`]]}>
               <Text style={styles.recoveryText}>{recoveryStatus.message}</Text>
               {strengthCount7d > 0 && (
                 <Text style={styles.recoverySubText}>
