@@ -1,4 +1,5 @@
-import { Tabs } from 'expo-router';
+import { Tabs, router } from 'expo-router';
+import { Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function TabLayout() {
@@ -10,6 +11,11 @@ export default function TabLayout() {
         tabBarStyle: { backgroundColor: '#000' },
         headerStyle: { backgroundColor: '#000' },
         headerTintColor: '#fff',
+        headerRight: () => (
+          <Pressable onPress={() => router.push('/profile')} style={{ marginRight: 16 }}>
+            <Ionicons name="settings-outline" size={22} color="#D4AF37" />
+          </Pressable>
+        ),
       }}>
       <Tabs.Screen
         name="strength"

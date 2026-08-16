@@ -72,6 +72,21 @@ export function initDatabase() {
       sort_order INTEGER
     );
   `);
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS profile (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      height_cm REAL,
+      target_weight_kg REAL,
+      target_date TEXT
+    );
+  `);
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS weight_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      weight_kg REAL NOT NULL
+    );
+  `);
 }
 
 export type StrengthSet = {
@@ -227,6 +242,36 @@ export function addRunFromHealthConnect(date: string, distanceKm: number, durati
     'INSERT INTO runs (date, distance_km, duration_min, avg_hr, calories, health_connect_id, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?);',
     [date, distanceKm, durationMin, avgHr, calories, hcId, nextOrder]
   );
+}
+
+export function getProfile() {
+  return db.getFirstSync<any>('SELECT * FROM profile WHERE id = 1;');
+}
+
+export function saveProfile(heightCm: number | null, targetWeightKg: number | null, targetDate: string | null) {
+  db.runSync(
+    'INSERT INTO profile (id, height_cm, target_weight_kg, target_date) VALUES (1, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET height_cm = excluded.height_cm, target_weight_kg = excluded.target_weight_kg, target_date = excluded.target_date;',
+    [heightCm, targetWeightKg, targetDate]
+  );
+}
+
+export function addWeightEntry(date: string, weightKg: number) {
+  db.runSync(
+    'INSERT INTO weight_log (date, weight_kg) VALUES (?, ?);',
+    [date, weightKg]
+  );
+}
+
+export function getWeightLog() {
+  return db.getAllSync<any>('SELECT * FROM weight_log ORDER BY date ASC;');
+}
+
+export function deleteWeightEntry(id: number) {
+  db.runSync('DELETE FROM weight_log WHERE id = ?;', [id]);
+}
+
+export function getLatestWeight() {
+  return db.getFirstSync<any>('SELECT * FROM weight_log ORDER BY date DESC LIMIT 1;');
 }
 
 // Garantit que la table existe dès l'import du module, avant même que

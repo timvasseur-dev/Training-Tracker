@@ -81,6 +81,7 @@ export default function StrengthScreen() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [sessionDurations, setSessionDurations] = useState<Record<string, string>>({});
   const [sessionRpes, setSessionRpes] = useState<Record<string, string>>({});
+  const [chartReturnScreen, setChartReturnScreen] = useState<'add' | 'view'>('add');
 
   function loadAllSets() {
     setAllSets(getAllSets());
@@ -145,11 +146,12 @@ export default function StrengthScreen() {
   }
 
   function openChart() {
+    setChartReturnScreen('add');
     setScreen('chart');
   }
 
   function closeChart() {
-    setScreen('add');
+    setScreen(chartReturnScreen);
   }
 
   function handleAdd() {
@@ -278,7 +280,12 @@ export default function StrengthScreen() {
           keyExtractor={(item) => item.exercise}
           renderItem={({ item }) => (
             <View style={styles.previewExercise}>
-              <Text style={styles.previewExerciseName}>{item.exercise}</Text>
+              <View style={styles.previewExerciseHeader}>
+                <Text style={styles.previewExerciseName}>{item.exercise}</Text>
+                <Pressable onPress={() => { setSelectedExercise(item.exercise); setChartReturnScreen('view'); setScreen('chart'); }}>
+                  <Text style={styles.progressLink}>📈 progression</Text>
+                </Pressable>
+              </View>
               {item.sets.map((s: any) => (
                 <View key={s.id} style={styles.setRow}>
                   <Text style={styles.setText}>{s.weight} kg × {s.reps}</Text>
@@ -602,6 +609,8 @@ const styles = StyleSheet.create({
 
   previewExercise: { marginBottom: 16 },
   previewExerciseName: { color: '#D4AF37', fontWeight: '600', marginBottom: 4 },
+  previewExerciseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  progressLink: { color: '#5DADE2', fontSize: 12 },
   setRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#222' },
   setRowActive: { backgroundColor: '#1a1a1a', borderLeftWidth: 3, borderLeftColor: '#D4AF37', paddingLeft: 8 },
   rowActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
