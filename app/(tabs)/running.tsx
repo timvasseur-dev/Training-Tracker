@@ -1,9 +1,21 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Alert, Modal } from 'react-native';
+import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Alert, Modal, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { LineChart } from 'react-native-chart-kit';
 import { addRun, getAllRuns, updateRun, deleteRun, runExistsByHealthConnectId, addRunFromHealthConnect } from '../../database/db';
 import { toISODate, isSameDate, getYesterday, formatDateLabel, formatISODateLabel } from '../../utils/dates';
 import { initHealthConnect, requestRunningPermissions, readRunningSessions } from '../../utils/healthConnect';
+
+const screenWidth = Dimensions.get('window').width;
+const chartConfig = {
+  backgroundGradientFrom: '#000',
+  backgroundGradientTo: '#000',
+  decimalPlaces: 2,
+  color: (o = 1) => `rgba(212, 175, 55, ${o})`,
+  labelColor: (o = 1) => `rgba(200, 200, 200, ${o})`,
+  propsForDots: { r: '4', strokeWidth: '2', stroke: '#D4AF37' },
+};
 
 function computeSpeed(distanceKm: number, durationMin: number) {
   if (durationMin <= 0) return 0;
@@ -20,7 +32,7 @@ function computePace(distanceKm: number, durationMin: number) {
 
 export default function RunningScreen() {
   const [runs, setRuns] = useState<any[]>([]);
-  const [screen, setScreen] = useState<'list' | 'add'>('list');
+  const [screen, setScreen] = useState<'list' | 'add' | 'chart'>('list');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -148,6 +160,82 @@ export default function RunningScreen() {
     ]);
   }
 
+  if (screen === 'chart') {
+    const sorted = [...runs]
+      .filter((r) => r.distance_km > 0 && r.duration_min > 0)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-10);
+
+    const paces = sorted.map((r) => r.duration_min / r.distance_km);
+    const hrs = sorted.map((r) => (r.avg_hr != null ? r.avg_hr : null));
+    const hasHr = hrs.some((h) => h != null);
+
+    function normalize(arr: (number | null)[]) {
+      const vals = arr.filter((v) => v != null);
+      if (vals.length === 0) return arr.map(() => 0);
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      const range = max - min || 1;
+      return arr.map((v) => (v != null ? ((v - min) / range) * 100 : 0));
+    }
+
+    const labels = sorted.map((r) => { const [, m, d] = r.date.split('-'); return `${d}/${m}`; });
+    const datasets = [
+      { data: normalize(paces), color: (o = 1) => `rgba(212, 175, 55, ${o})`, strokeWidth: 2 },
+    ];
+    if (hasHr) {
+      datasets.push({ data: normalize(hrs), color: (o = 1) => `rgba(93, 173, 226, ${o})`, strokeWidth: 2 });
+    }
+
+    return (
+      <View style={styles.container}>
+        <View style={styles.addHeaderRow}>
+          <Pressable onPress={() => setScreen('list')}>
+            <Text style={styles.backText}>‹ Retour</Text>
+          </Pressable>
+          <Text style={styles.addTitle}>Progression</Text>
+        </View>
+        {sorted.length < 2 ? (
+          <Text style={styles.empty}>Pas encore assez de courses pour tracer un graphique (il en faut au moins 2).</Text>
+        ) : (
+          <>
+            <LineChart
+              data={{ labels, datasets }}
+              width={screenWidth - 32}
+              height={240}
+              chartConfig={chartConfig}
+              bezier
+              withHorizontalLabels={false}
+              style={{ borderRadius: 12, marginVertical: 12 }}
+            />
+            <View style={styles.chartLegend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#D4AF37' }]} />
+                <Text style={styles.legendText}>Allure (min/km)</Text>
+              </View>
+              {hasHr && (
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: '#5DADE2' }]} />
+                  <Text style={styles.legendText}>FC moyenne (bpm)</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.chartExplain}>
+              Tendances relatives sur tes {sorted.length} dernières courses. Idéalement, l'allure baisse (tu accélères) et à effort égal la FC baisse aussi (meilleure forme).
+            </Text>
+            <View style={styles.chartValues}>
+              {sorted.map((r, i) => (
+                <Text key={i} style={styles.chartValueLine}>
+                  {labels[i]} — {paces[i].toFixed(2)} min/km{hrs[i] != null ? ` · ${hrs[i]} bpm` : ''}
+                </Text>
+              ))}
+            </View>
+          </>
+        )}
+      </View>
+    );
+  }
+
   if (screen === 'list') {
     return (
       <View style={styles.container}>
@@ -156,9 +244,15 @@ export default function RunningScreen() {
           <Pressable style={styles.addButton} onPress={openAdd}>
             <Text style={styles.addButtonText}>+ Ajouter une course</Text>
           </Pressable>
-          <Pressable onPress={handleImportFromZepp} style={{ marginTop: 10, alignItems: 'center' }}>
-            <Text style={{ color: '#5DADE2', fontSize: 13 }}>🔗 Importer depuis Zepp</Text>
+          <Pressable onPress={handleImportFromZepp} style={styles.zeppButton}>
+            <Ionicons name="sync-outline" size={16} color="#D4AF37" />
+            <Text style={styles.zeppButtonText}>Importer depuis Zepp</Text>
           </Pressable>
+          {runs.length >= 2 && (
+            <Pressable onPress={() => setScreen('chart')} style={{ marginTop: 10, alignItems: 'center' }}>
+              <Text style={{ color: '#5DADE2', fontSize: 13 }}>📈 Voir ma progression</Text>
+            </Pressable>
+          )}
         </View>
         <FlatList
           data={runs}
@@ -332,23 +426,25 @@ export default function RunningScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => setShowNoteModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setShowNoteModal(false)}>
-          <Pressable style={styles.modalSheet} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Ressenti de la course</Text>
-            <TextInput
-              style={styles.noteInput}
-              placeholder="Ex : jambes lourdes, bonnes sensations..."
-              placeholderTextColor="#666"
-              value={note}
-              onChangeText={setNote}
-              multiline
-              autoFocus
-            />
-            <Pressable style={styles.noteValidateButton} onPress={() => setShowNoteModal(false)}>
-              <Text style={styles.noteValidateButtonText}>Valider</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={styles.modalOverlay} onPress={() => setShowNoteModal(false)}>
+            <Pressable style={styles.modalSheet} onPress={() => {}}>
+              <Text style={styles.modalTitle}>Ressenti de la course</Text>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Ex : jambes lourdes, bonnes sensations..."
+                placeholderTextColor="#666"
+                value={note}
+                onChangeText={setNote}
+                multiline
+                autoFocus
+              />
+              <Pressable style={styles.noteValidateButton} onPress={() => setShowNoteModal(false)}>
+                <Text style={styles.noteValidateButtonText}>Valider</Text>
+              </Pressable>
             </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Pressable style={styles.saveButton} onPress={handleSave}>
@@ -364,6 +460,8 @@ const styles = StyleSheet.create({
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   addButton: { backgroundColor: '#D4AF37', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
   addButtonText: { color: '#000', fontWeight: 'bold', fontSize: 15 },
+  zeppButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#111', borderWidth: 1, borderColor: '#333', borderRadius: 8, paddingVertical: 10, marginTop: 10 },
+  zeppButtonText: { color: '#D4AF37', fontSize: 14, fontWeight: '600' },
   listContent: { paddingBottom: 20 },
   runCard: { backgroundColor: '#111', borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#222', padding: 14 },
   runDate: { color: '#fff', fontWeight: 'bold', marginBottom: 6 },
@@ -400,4 +498,12 @@ const styles = StyleSheet.create({
 
   saveButton: { backgroundColor: '#D4AF37', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
   saveButtonText: { color: '#000', fontWeight: 'bold' },
+
+  chartLegend: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginBottom: 8 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendText: { color: '#aaa', fontSize: 12 },
+  chartExplain: { color: '#888', fontSize: 12, textAlign: 'center', marginBottom: 12, paddingHorizontal: 8 },
+  chartValues: { marginTop: 4 },
+  chartValueLine: { color: '#666', fontSize: 12, textAlign: 'center', marginBottom: 2 },
 });
