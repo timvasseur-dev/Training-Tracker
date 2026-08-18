@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Dimensions, Alert, Modal } from 'react-native';
+import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Dimensions, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LineChart } from 'react-native-chart-kit';
 import { STRENGTH_EXERCISES } from '../../constants/exercises';
@@ -406,23 +406,25 @@ export default function StrengthScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => setShowNoteModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setShowNoteModal(false)}>
-          <Pressable style={styles.modalSheet} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Note de la séance</Text>
-            <TextInput
-              style={styles.noteInput}
-              placeholder="Ex : bonne forme, genou qui tire..."
-              placeholderTextColor="#666"
-              value={notes[currentDateISO] ?? ''}
-              onChangeText={handleNoteChange}
-              multiline
-              autoFocus
-            />
-            <Pressable style={styles.noteValidateButton} onPress={() => setShowNoteModal(false)}>
-              <Text style={styles.noteValidateButtonText}>Valider</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={styles.modalOverlay} onPress={() => setShowNoteModal(false)}>
+            <Pressable style={styles.modalSheet} onPress={() => {}}>
+              <Text style={styles.modalTitle}>Note de la séance</Text>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Ex : bonne forme, genou qui tire..."
+                placeholderTextColor="#666"
+                value={notes[currentDateISO] ?? ''}
+                onChangeText={handleNoteChange}
+                multiline
+                autoFocus
+              />
+              <Pressable style={styles.noteValidateButton} onPress={() => setShowNoteModal(false)}>
+                <Text style={styles.noteValidateButtonText}>Valider</Text>
+              </Pressable>
             </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Pressable onPress={() => setShowExercisePicker(true)} style={styles.exercisePickerButton}>

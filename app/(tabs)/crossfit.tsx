@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Alert, Modal } from 'react-native';
+import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { addWod, getAllWods, updateWod, deleteWod, getAllRuns, getAllSets, getAllNotes } from '../../database/db';
 import { toISODate, isSameDate, getYesterday, formatDateLabel, formatISODateLabel, daysAgo } from '../../utils/dates';
@@ -286,23 +286,25 @@ export default function CrossfitScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => setShowNoteModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setShowNoteModal(false)}>
-          <Pressable style={styles.modalSheet} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Ressenti du WOD</Text>
-            <TextInput
-              style={styles.noteInput}
-              placeholder="Ex : cardio à la peine, bonnes sensations sur les cleans..."
-              placeholderTextColor="#666"
-              value={note}
-              onChangeText={setNote}
-              multiline
-              autoFocus
-            />
-            <Pressable style={styles.noteValidateButton} onPress={() => setShowNoteModal(false)}>
-              <Text style={styles.noteValidateButtonText}>Valider</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={styles.modalOverlay} onPress={() => setShowNoteModal(false)}>
+            <Pressable style={styles.modalSheet} onPress={() => {}}>
+              <Text style={styles.modalTitle}>Ressenti du WOD</Text>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Ex : cardio à la peine, bonnes sensations sur les cleans..."
+                placeholderTextColor="#666"
+                value={note}
+                onChangeText={setNote}
+                multiline
+                autoFocus
+              />
+              <Pressable style={styles.noteValidateButton} onPress={() => setShowNoteModal(false)}>
+                <Text style={styles.noteValidateButtonText}>Valider</Text>
+              </Pressable>
             </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Pressable style={styles.saveButton} onPress={handleSave}>

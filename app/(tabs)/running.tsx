@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Alert, Modal, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Alert, Modal, KeyboardAvoidingView, Platform, Dimensions, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LineChart } from 'react-native-chart-kit';
@@ -8,14 +8,6 @@ import { toISODate, isSameDate, getYesterday, formatDateLabel, formatISODateLabe
 import { initHealthConnect, requestRunningPermissions, readRunningSessions } from '../../utils/healthConnect';
 
 const screenWidth = Dimensions.get('window').width;
-const chartConfig = {
-  backgroundGradientFrom: '#000',
-  backgroundGradientTo: '#000',
-  decimalPlaces: 2,
-  color: (o = 1) => `rgba(212, 175, 55, ${o})`,
-  labelColor: (o = 1) => `rgba(200, 200, 200, ${o})`,
-  propsForDots: { r: '4', strokeWidth: '2', stroke: '#D4AF37' },
-};
 
 function computeSpeed(distanceKm: number, durationMin: number) {
   if (durationMin <= 0) return 0;
@@ -166,26 +158,28 @@ export default function RunningScreen() {
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(-10);
 
-    const paces = sorted.map((r) => r.duration_min / r.distance_km);
-    const hrs = sorted.map((r) => (r.avg_hr != null ? r.avg_hr : null));
-    const hasHr = hrs.some((h) => h != null);
-
-    function normalize(arr: (number | null)[]) {
-      const vals = arr.filter((v) => v != null);
-      if (vals.length === 0) return arr.map(() => 0);
-      const min = Math.min(...vals);
-      const max = Math.max(...vals);
-      const range = max - min || 1;
-      return arr.map((v) => (v != null ? ((v - min) / range) * 100 : 0));
-    }
-
     const labels = sorted.map((r) => { const [, m, d] = r.date.split('-'); return `${d}/${m}`; });
-    const datasets = [
-      { data: normalize(paces), color: (o = 1) => `rgba(212, 175, 55, ${o})`, strokeWidth: 2 },
-    ];
-    if (hasHr) {
-      datasets.push({ data: normalize(hrs), color: (o = 1) => `rgba(93, 173, 226, ${o})`, strokeWidth: 2 });
-    }
+    const paces = sorted.map((r) => Math.round((r.duration_min / r.distance_km) * 100) / 100);
+    const runsWithHr = sorted.filter((r) => r.avg_hr != null);
+    const hrLabels = runsWithHr.map((r) => { const [, m, d] = r.date.split('-'); return `${d}/${m}`; });
+    const hrs = runsWithHr.map((r) => r.avg_hr);
+
+    const paceChartConfig = {
+      backgroundGradientFrom: '#000',
+      backgroundGradientTo: '#000',
+      decimalPlaces: 2,
+      color: (o = 1) => `rgba(198, 160, 40, ${o})`,
+      labelColor: (o = 1) => `rgba(200, 200, 200, ${o})`,
+      propsForDots: { r: '4', strokeWidth: '2', stroke: '#C6A028' },
+    };
+    const hrChartConfig = {
+      backgroundGradientFrom: '#000',
+      backgroundGradientTo: '#000',
+      decimalPlaces: 0,
+      color: (o = 1) => `rgba(41, 128, 200, ${o})`,
+      labelColor: (o = 1) => `rgba(200, 200, 200, ${o})`,
+      propsForDots: { r: '4', strokeWidth: '2', stroke: '#2980C8' },
+    };
 
     return (
       <View style={styles.container}>
@@ -195,42 +189,39 @@ export default function RunningScreen() {
           </Pressable>
           <Text style={styles.addTitle}>Progression</Text>
         </View>
+
         {sorted.length < 2 ? (
           <Text style={styles.empty}>Pas encore assez de courses pour tracer un graphique (il en faut au moins 2).</Text>
         ) : (
-          <>
+          <ScrollView>
+            <Text style={styles.chartSectionTitle}>Allure (min/km)</Text>
             <LineChart
-              data={{ labels, datasets }}
+              data={{ labels, datasets: [{ data: paces }] }}
               width={screenWidth - 32}
-              height={240}
-              chartConfig={chartConfig}
+              height={200}
+              yAxisSuffix=""
+              chartConfig={paceChartConfig}
               bezier
-              withHorizontalLabels={false}
-              style={{ borderRadius: 12, marginVertical: 12 }}
+              style={{ borderRadius: 12, marginBottom: 8 }}
             />
-            <View style={styles.chartLegend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#D4AF37' }]} />
-                <Text style={styles.legendText}>Allure (min/km)</Text>
-              </View>
-              {hasHr && (
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: '#5DADE2' }]} />
-                  <Text style={styles.legendText}>FC moyenne (bpm)</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.chartExplain}>
-              Tendances relatives sur tes {sorted.length} dernières courses. Idéalement, l'allure baisse (tu accélères) et à effort égal la FC baisse aussi (meilleure forme).
-            </Text>
-            <View style={styles.chartValues}>
-              {sorted.map((r, i) => (
-                <Text key={i} style={styles.chartValueLine}>
-                  {labels[i]} — {paces[i].toFixed(2)} min/km{hrs[i] != null ? ` · ${hrs[i]} bpm` : ''}
-                </Text>
-              ))}
-            </View>
-          </>
+            <Text style={styles.chartHint}>Plus c'est bas, plus tu es rapide.</Text>
+
+            {hrs.length >= 2 && (
+              <>
+                <Text style={styles.chartSectionTitle}>FC moyenne (bpm)</Text>
+                <LineChart
+                  data={{ labels: hrLabels, datasets: [{ data: hrs }] }}
+                  width={screenWidth - 32}
+                  height={200}
+                  yAxisSuffix=""
+                  chartConfig={hrChartConfig}
+                  bezier
+                  style={{ borderRadius: 12, marginBottom: 8 }}
+                />
+                <Text style={styles.chartHint}>À allure égale, une FC qui baisse = meilleure forme.</Text>
+              </>
+            )}
+          </ScrollView>
         )}
       </View>
     );
@@ -499,11 +490,6 @@ const styles = StyleSheet.create({
   saveButton: { backgroundColor: '#D4AF37', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
   saveButtonText: { color: '#000', fontWeight: 'bold' },
 
-  chartLegend: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginBottom: 8 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { color: '#aaa', fontSize: 12 },
-  chartExplain: { color: '#888', fontSize: 12, textAlign: 'center', marginBottom: 12, paddingHorizontal: 8 },
-  chartValues: { marginTop: 4 },
-  chartValueLine: { color: '#666', fontSize: 12, textAlign: 'center', marginBottom: 2 },
+  chartSectionTitle: { color: '#fff', fontSize: 15, fontWeight: '600', marginTop: 12, marginBottom: 4 },
+  chartHint: { color: '#888', fontSize: 12, textAlign: 'center', marginBottom: 8 },
 });

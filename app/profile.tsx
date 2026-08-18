@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Alert, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LineChart } from 'react-native-chart-kit';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -89,12 +90,25 @@ export default function ProfileScreen() {
     : [];
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.backText}>‹ Retour</Text>
-        </Pressable>
-        <Text style={styles.title}>Profil</Text>
+        <View style={styles.headerTop}>
+          <Pressable onPress={() => router.back()}>
+            <Text style={styles.backText}>‹ Retour</Text>
+          </Pressable>
+          <Text style={styles.title}>Profil</Text>
+        </View>
+
+        <View style={styles.statCards}>
+          <View style={styles.statCard}>
+            <Text style={styles.statCardValue}>{height || '—'}</Text>
+            <Text style={styles.statCardLabel}>cm</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statCardValue}>{latestWeight ?? '—'}</Text>
+            <Text style={styles.statCardLabel}>kg actuel</Text>
+          </View>
+        </View>
       </View>
 
       <FlatList
@@ -217,15 +231,20 @@ export default function ProfileScreen() {
         ListEmptyComponent={<Text style={styles.empty}>Aucune pesée enregistrée</Text>}
         contentContainerStyle={{ paddingBottom: 40 }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000', paddingTop: 8, paddingHorizontal: 16 },
+  container: { flex: 1, backgroundColor: '#000', paddingHorizontal: 16 },
   headerRow: { marginBottom: 12 },
   backText: { color: '#D4AF37', fontSize: 15, marginBottom: 4 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  statCards: { flexDirection: 'row', gap: 8 },
+  statCard: { backgroundColor: '#111', borderRadius: 8, borderWidth: 1, borderColor: '#D4AF37', paddingVertical: 8, paddingHorizontal: 14, alignItems: 'center', minWidth: 64 },
+  statCardValue: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  statCardLabel: { color: '#888', fontSize: 10 },
   sectionLabel: { color: '#888', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, marginTop: 16, marginBottom: 8 },
   row: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   input: { flex: 1, backgroundColor: '#111', color: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#333' },
