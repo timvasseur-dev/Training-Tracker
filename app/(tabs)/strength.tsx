@@ -220,7 +220,6 @@ export default function StrengthScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Séances</Text>
           <Pressable style={styles.addSessionButton} onPress={openAdd}>
             <Text style={styles.addSessionButtonText}>+ Ajouter une séance</Text>
           </Pressable>

@@ -231,7 +231,6 @@ export default function RunningScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Courses</Text>
           <Pressable style={styles.addButton} onPress={openAdd}>
             <Text style={styles.addButtonText}>+ Ajouter une course</Text>
           </Pressable>

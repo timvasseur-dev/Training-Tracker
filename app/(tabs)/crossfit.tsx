@@ -152,7 +152,6 @@ export default function CrossfitScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Crossfit WOD</Text>
           {recoveryStatus && (
             <View style={[styles.recoveryCard, styles[`recovery_${recoveryStatus.level}` as `recovery_${RecoveryLevel}`]]}>
               <Text style={styles.recoveryText}>{recoveryStatus.message}</Text>

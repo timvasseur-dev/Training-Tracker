@@ -5,7 +5,7 @@ import { getAllSets, getAllRuns, getAllWods } from '../../database/db';
 import { toISODate } from '../../utils/dates';
 
 const STRENGTH_COLOR = '#D4AF37';
-const RUNNING_COLOR = '#5DADE2';
+const RUNNING_COLOR = '#2ECC71';
 const CROSSFIT_COLOR = '#E67E22';
 
 export default function CalendarScreen() {
@@ -75,8 +75,6 @@ export default function CalendarScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Calendrier</Text>
-
       <View style={styles.statsCard}>
         <View style={styles.statBlock}>
           <Text style={styles.statValue}>{strengthSessionsCount}</Text>
