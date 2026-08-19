@@ -73,8 +73,48 @@ export default function CalendarScreen() {
   const totalVolume = monthSets.reduce((sum, s) => sum + s.weight * s.reps, 0);
   const totalDistance = monthRuns.reduce((sum, r) => sum + r.distance_km, 0);
 
+  const today = toISODate(new Date());
+  const weekAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 6); return toISODate(d); })();
+
+  const weekSets = allSets.filter((s) => s.date >= weekAgo && s.date <= today);
+  const weekRuns = allRuns.filter((r) => r.date >= weekAgo && r.date <= today);
+  const weekWods = allWods.filter((w) => w.date >= weekAgo && w.date <= today);
+
+  const weekStrengthSessions = new Set(weekSets.map((s) => s.date)).size;
+  const weekVolume = weekSets.reduce((sum, s) => sum + s.weight * s.reps, 0);
+  const weekDistance = weekRuns.reduce((sum, r) => sum + r.distance_km, 0);
+  const weekLoad =
+    weekRuns.reduce((sum, r) => sum + (r.training_load ?? 0), 0) +
+    weekWods.reduce((sum, w) => sum + (w.training_load ?? 0), 0);
+
   return (
     <View style={styles.container}>
+      <View style={styles.weekCard}>
+        <Text style={styles.weekTitle}>Cette semaine (7 derniers jours)</Text>
+        <View style={styles.weekGrid}>
+          <View style={styles.weekStat}>
+            <Text style={styles.weekValue}>{weekStrengthSessions}</Text>
+            <Text style={styles.weekLabel}>séances renfo</Text>
+          </View>
+          <View style={styles.weekStat}>
+            <Text style={styles.weekValue}>{(weekVolume / 1000).toFixed(1)}t</Text>
+            <Text style={styles.weekLabel}>volume</Text>
+          </View>
+          <View style={styles.weekStat}>
+            <Text style={styles.weekValue}>{weekDistance.toFixed(1)}</Text>
+            <Text style={styles.weekLabel}>km</Text>
+          </View>
+          <View style={styles.weekStat}>
+            <Text style={styles.weekValue}>{weekWods.length}</Text>
+            <Text style={styles.weekLabel}>WODs</Text>
+          </View>
+          <View style={styles.weekStat}>
+            <Text style={styles.weekValue}>{weekLoad.toFixed(0)}</Text>
+            <Text style={styles.weekLabel}>charge</Text>
+          </View>
+        </View>
+      </View>
+
       <View style={styles.statsCard}>
         <View style={styles.statBlock}>
           <Text style={styles.statValue}>{strengthSessionsCount}</Text>
@@ -157,6 +197,12 @@ const styles = StyleSheet.create({
   statBlock: { flex: 1, alignItems: 'center' },
   statValue: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
   statLabel: { color: '#888', fontSize: 9 },
+  weekCard: { backgroundColor: '#111', borderRadius: 8, borderWidth: 1, borderColor: '#D4AF37', padding: 12, marginBottom: 12 },
+  weekTitle: { color: '#D4AF37', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, fontWeight: '600' },
+  weekGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
+  weekStat: { alignItems: 'center', minWidth: 56 },
+  weekValue: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  weekLabel: { color: '#888', fontSize: 9 },
   calendar: { borderRadius: 8, marginBottom: 12 },
   legendRow: { flexDirection: 'row', gap: 16, marginBottom: 16, justifyContent: 'center' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
