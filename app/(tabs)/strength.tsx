@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, Pressable, TextInput, FlatList, Dimensions, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LineChart } from 'react-native-chart-kit';
+import * as Haptics from 'expo-haptics';
 import { STRENGTH_EXERCISES } from '../../constants/exercises';
-import { addSet, getAllSets, updateSet, deleteSet, deleteSetsForDate, moveSet, saveNoteForDate, getAllNotes, saveSessionLoadForDate } from '../../database/db';
+import { addSet, getAllSets, updateSet, deleteSet, deleteSetsForDate, moveSet, saveNoteForDate, getAllNotes, saveSessionLoadForDate, getBest1RMForExercise } from '../../database/db';
 import { toISODate, isSameDate, getYesterday, formatDateLabel, formatISODateLabel } from '../../utils/dates';
 
 const screenWidth = Dimensions.get('window').width;
@@ -82,6 +83,7 @@ export default function StrengthScreen() {
   const [sessionDurations, setSessionDurations] = useState<Record<string, string>>({});
   const [sessionRpes, setSessionRpes] = useState<Record<string, string>>({});
   const [chartReturnScreen, setChartReturnScreen] = useState<'add' | 'view'>('add');
+  const [searchQuery, setSearchQuery] = useState('');
 
   function loadAllSets() {
     setAllSets(getAllSets());
@@ -156,9 +158,17 @@ export default function StrengthScreen() {
 
   function handleAdd() {
     if (!weight || !reps) return;
-    addSet(selectedExercise, parseFloat(weight), parseInt(reps), toISODate(selectedDate));
+    const w = parseFloat(weight);
+    const r = parseInt(reps);
+    const previousBest = getBest1RMForExercise(selectedExercise);
+    const newE1RM = w * (1 + r / 30);
+    addSet(selectedExercise, w, r, toISODate(selectedDate));
     resetForm();
     loadAllSets();
+    if (newE1RM > previousBest && previousBest > 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('🏆 Nouveau record !', `${selectedExercise} : ${newE1RM.toFixed(1)} kg estimé (ancien : ${previousBest.toFixed(1)} kg)`);
+    }
   }
 
   function handleUpdate() {
@@ -211,6 +221,14 @@ export default function StrengthScreen() {
   }
 
   const sessionGroups = groupBySession(allSets);
+  const filteredSessionGroups = searchQuery.trim() === ''
+    ? sessionGroups
+    : sessionGroups.filter((session) => {
+        const q = searchQuery.toLowerCase();
+        const dateMatch = formatISODateLabel(session.date).toLowerCase().includes(q) || session.date.includes(q);
+        const exerciseMatch = session.exercises.some((ex: any) => ex.exercise.toLowerCase().includes(q));
+        return dateMatch || exerciseMatch;
+      });
   const currentDateISO = toISODate(selectedDate);
   const currentSessionByExercise = groupByExercise(allSets.filter((s) => s.date === currentDateISO));
   const exerciseHistory = allSets.filter((s) => s.exercise === selectedExercise);
@@ -223,9 +241,16 @@ export default function StrengthScreen() {
           <Pressable style={styles.addSessionButton} onPress={openAdd}>
             <Text style={styles.addSessionButtonText}>+ Ajouter une séance</Text>
           </Pressable>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Rechercher (exercice, date...)"
+            placeholderTextColor="#666"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
         <FlatList
-          data={sessionGroups}
+          data={filteredSessionGroups}
           keyExtractor={(item) => item.date}
           renderItem={({ item }) => (
             <View style={styles.sessionCard}>
@@ -551,6 +576,7 @@ const styles = StyleSheet.create({
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   addSessionButton: { backgroundColor: '#D4AF37', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
   addSessionButtonText: { color: '#000', fontWeight: 'bold', fontSize: 15 },
+  searchInput: { backgroundColor: '#111', color: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#333', paddingHorizontal: 12, paddingVertical: 10, marginTop: 10 },
   sessionListContent: { paddingBottom: 20 },
   sessionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#222' },
   sessionInfo: { flex: 1, padding: 14 },
