@@ -64,6 +64,7 @@ export default function CrossfitScreen() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [recoveryStatus, setRecoveryStatus] = useState<{ level: RecoveryLevel; message: string } | null>(null);
   const [strengthCount7d, setStrengthCount7d] = useState(0);
+  const [dailyForm, setDailyForm] = useState<'tired' | 'normal' | 'fresh'>('normal');
 
   function loadWods() {
     setWods(getAllWods());
@@ -148,18 +149,48 @@ export default function CrossfitScreen() {
     ]);
   }
 
+  function getAdjustedRecoveryMessage() {
+    if (!recoveryStatus) return null;
+    const base = recoveryStatus.message;
+    if (recoveryStatus.level === 'high') {
+      if (dailyForm === 'fresh') return base + ' Mais tu te sens en forme — à toi de juger, reste à l\'écoute.';
+      if (dailyForm === 'tired') return base + ' Et tu te sens fatigué — clairement une journée pour lever le pied.';
+    }
+    if (recoveryStatus.level === 'normal' || recoveryStatus.level === 'low') {
+      if (dailyForm === 'tired') return base + ' Ceci dit tu te sens fatigué — vas-y prudemment ou repose-toi.';
+    }
+    return base;
+  }
+  const adjustedMessage = getAdjustedRecoveryMessage();
+
   if (screen === 'list') {
     return (
       <View style={styles.container}>
         <View style={styles.headerRow}>
           {recoveryStatus && (
             <View style={[styles.recoveryCard, styles[`recovery_${recoveryStatus.level}` as `recovery_${RecoveryLevel}`]]}>
-              <Text style={styles.recoveryText}>{recoveryStatus.message}</Text>
+              <Text style={styles.recoveryText}>{adjustedMessage}</Text>
               {strengthCount7d > 0 && (
                 <Text style={styles.recoverySubText}>
                   {strengthCount7d} séance{strengthCount7d > 1 ? 's' : ''} de renfo cette semaine
                 </Text>
               )}
+            </View>
+          )}
+          {recoveryStatus && (
+            <View style={styles.formRow}>
+              <Text style={styles.formLabel}>Forme du jour :</Text>
+              <View style={styles.formChips}>
+                <Pressable onPress={() => setDailyForm('tired')} style={[styles.formChip, dailyForm === 'tired' && styles.formChipActive]}>
+                  <Text style={[styles.formChipText, dailyForm === 'tired' && styles.formChipTextActive]}>Fatigué</Text>
+                </Pressable>
+                <Pressable onPress={() => setDailyForm('normal')} style={[styles.formChip, dailyForm === 'normal' && styles.formChipActive]}>
+                  <Text style={[styles.formChipText, dailyForm === 'normal' && styles.formChipTextActive]}>Normal</Text>
+                </Pressable>
+                <Pressable onPress={() => setDailyForm('fresh')} style={[styles.formChip, dailyForm === 'fresh' && styles.formChipActive]}>
+                  <Text style={[styles.formChipText, dailyForm === 'fresh' && styles.formChipTextActive]}>En forme</Text>
+                </Pressable>
+              </View>
             </View>
           )}
           <Pressable style={styles.addButton} onPress={openAdd}>
@@ -326,6 +357,13 @@ const styles = StyleSheet.create({
   recovery_unknown: { borderColor: '#444' },
   recoveryText: { color: '#fff', fontSize: 13, lineHeight: 18 },
   recoverySubText: { color: '#888', fontSize: 12, marginTop: 6 },
+  formRow: { marginBottom: 12 },
+  formLabel: { color: '#888', fontSize: 12, marginBottom: 6 },
+  formChips: { flexDirection: 'row', gap: 8 },
+  formChip: { flex: 1, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: '#444', alignItems: 'center' },
+  formChipActive: { backgroundColor: '#D4AF37', borderColor: '#D4AF37' },
+  formChipText: { color: '#aaa', fontSize: 13, lineHeight: 18 },
+  formChipTextActive: { color: '#000', fontWeight: 'bold' },
   listContent: { paddingBottom: 20 },
   wodCard: { backgroundColor: '#111', borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#222', padding: 14 },
   wodDate: { color: '#fff', fontWeight: 'bold', marginBottom: 4 },

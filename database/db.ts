@@ -274,6 +274,16 @@ export function getLatestWeight() {
   return db.getFirstSync<any>('SELECT * FROM weight_log ORDER BY date DESC LIMIT 1;');
 }
 
+export function getBest1RMForExercise(exercise: string) {
+  const rows = db.getAllSync<any>('SELECT weight, reps FROM strength_sets WHERE exercise = ?;', [exercise]);
+  let best = 0;
+  for (const r of rows) {
+    const e1rm = r.weight * (1 + r.reps / 30);
+    if (e1rm > best) best = e1rm;
+  }
+  return best;
+}
+
 // Garantit que la table existe dès l'import du module, avant même que
 // l'effect d'init du layout racine ne se déclenche (les effects enfants
 // s'exécutent avant ceux du parent, donc un écran peut requêter avant lui).
